@@ -1,4 +1,4 @@
-# 💧 Magic Sort Clone — Case Study
+# 💧 Magic Sort Clone
 
 > A Water Sort puzzle clone built in **Unity 6**, focused on **game feel** over feature breadth.  
 > Every animation, haptic pulse, and particle burst exists to make the player *feel* smart when they solve a tube.
