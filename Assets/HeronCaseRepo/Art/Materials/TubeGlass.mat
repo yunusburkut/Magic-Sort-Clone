@@ -29,10 +29,9 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _AlphaBoost: 1.35
-    - _BodyAlpha: 0.15
-    - _EdgeGlow: 0.05
-    - _RimAlpha: 0.55
+    - _BodyAlpha: 1
+    - _RimAlpha: 1
+    - _Reflection: 1
     - _SweepDuration: 1.6
     - _SweepPeriod: 8
     - _SweepStagger: 0.06
@@ -40,7 +39,7 @@ Material:
     - _SweepWidth: 0.09
     m_Colors:
     - _Color: {r: 1, g: 1, b: 1, a: 1}
-    - _GlassTint: {r: 0.8, g: 0.9, b: 1, a: 1}
+    - _GlassTint: {r: 1, g: 1, b: 1, a: 1}
     - _SweepColor: {r: 1, g: 1, b: 1, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1

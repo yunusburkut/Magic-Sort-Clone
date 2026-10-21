@@ -6,11 +6,10 @@ Shader "HeronCase/TubeGlass"
         _Color ("Tint", Color) = (1,1,1,1)
 
         [Header(Glass)]
-        _GlassTint ("Glass Tint", Color) = (0.86,0.95,1,1)
-        _AlphaBoost ("Alpha Boost", Range(0.5,3)) = 1.35
-        _BodyAlpha ("Body Opacity", Range(0,1)) = 0.35
-        _RimAlpha ("Rim Opacity", Range(0,1)) = 1
-        _EdgeGlow ("Edge Glow", Range(0,1)) = 0.35
+        _GlassTint ("Glass Tint", Color) = (1,1,1,1)
+        _Reflection ("Reflection", Range(0,2)) = 1
+        _BodyAlpha ("Body Opacity", Range(0,2)) = 1
+        _RimAlpha ("Rim Opacity", Range(0,2)) = 1
 
         [Header(Shine Sweep)]
         _SweepColor ("Sweep Color", Color) = (1,1,1,1)
@@ -33,7 +32,8 @@ Shader "HeronCase/TubeGlass"
             "CanUseSpriteAtlas" = "True"
         }
 
-        Blend SrcAlpha OneMinusSrcAlpha
+        // the sprite is premultiplied: its highlights add light even where the glass hides nothing
+        Blend One OneMinusSrcAlpha
         Cull Off
         ZWrite Off
 
@@ -63,10 +63,9 @@ Shader "HeronCase/TubeGlass"
         CBUFFER_START(UnityPerMaterial)
             half4  _Color;
             half4  _GlassTint;
-            half   _AlphaBoost;
+            half   _Reflection;
             half   _BodyAlpha;
             half   _RimAlpha;
-            half   _EdgeGlow;
             half4  _SweepColor;
             half   _SweepStrength;
             half   _SweepWidth;
@@ -95,15 +94,12 @@ Shader "HeronCase/TubeGlass"
             // glass mask: everything the Blender render covered, including the near-transparent body
             float glass = smoothstep(0.02, 0.08, tex.a);
 
-            half3 rgb = tex.rgb * _GlassTint.rgb;
+            // rgb is the light the glass gives off by itself (reflections), a how much of what is behind it hides
+            half3 rgb = tex.rgb * _GlassTint.rgb * _Reflection;
 
-            // the thin body in front of the liquid stays faint so its colours read clearly; the rim keeps a softer line
+            // the thin body in front of the liquid and the rim can be thinned or thickened apart
             float rim = smoothstep(0.2, 0.45, tex.a);
-            float a = saturate(tex.a * _AlphaBoost * lerp(_BodyAlpha, _RimAlpha, rim));
-
-            // brighter, cleaner silhouette: lift the strong (edge) pixels toward white
-            float edge = smoothstep(0.35, 0.9, tex.a);
-            rgb = lerp(rgb, half3(1, 1, 1), edge * _EdgeGlow);
+            float a = saturate(tex.a * lerp(_BodyAlpha, _RimAlpha, rim));
 
             // diagonal shine sweep, staggered across the board by world x; it crosses in _SweepDuration and then rests
             // off the tube for the rest of the period
@@ -112,9 +108,9 @@ Shader "HeronCase/TubeGlass"
             float center = lerp(-0.5, 2.2, saturate(phase * _SweepPeriod / max(_SweepDuration, 1e-3)));
             float sweep = (1.0 - smoothstep(0.0, _SweepWidth, abs(s - center))) * glass * _SweepStrength;
             rgb = lerp(rgb, _SweepColor.rgb, sweep);
-            a = max(a, sweep * 0.8);
+            a = lerp(a, 1.0, sweep);
 
-            return half4(rgb * IN.color.rgb, a * IN.color.a);
+            return half4(rgb * IN.color.rgb, a) * IN.color.a;
         }
         ENDHLSL
 

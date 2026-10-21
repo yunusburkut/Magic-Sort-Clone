@@ -88,6 +88,13 @@ public class GameSettings : ScriptableObject
     [SerializeField] private float _solvedLandSquash = 0.88f;
     [SerializeField, FormerlySerializedAs("solvedBounceDuration")] private float _solvedBounceDuration = 0.5f;
 
+    [Header("Solved Cap")]
+    [SerializeField] private float _capPopDuration = 0.12f;
+    [SerializeField] private float _capDropHeight = 0.7f;
+    [SerializeField] private float _capDropDuration = 0.1f;
+    [SerializeField] private float _capSnapSquash = 0.8f;
+    [SerializeField] private float _capSnapDuration = 0.3f;
+
     [Header("Enter Animation")]
     [SerializeField] private float _enterDuration = 0.6f;
     [SerializeField] private float _enterStaggerDelay = 0.08f;
@@ -176,6 +183,11 @@ public class GameSettings : ScriptableObject
     public float SolvedHopDuration => _solvedHopDuration;
     public float SolvedLandSquash => _solvedLandSquash;
     public float SolvedBounceDuration => _solvedBounceDuration;
+    public float CapPopDuration => _capPopDuration;
+    public float CapDropHeight => _capDropHeight;
+    public float CapDropDuration => _capDropDuration;
+    public float CapSnapSquash => _capSnapSquash;
+    public float CapSnapDuration => _capSnapDuration;
     public float EnterDuration => _enterDuration;
     public float EnterStaggerDelay => _enterStaggerDelay;
     public float CloakAnticipationDip => _cloakAnticipationDip;

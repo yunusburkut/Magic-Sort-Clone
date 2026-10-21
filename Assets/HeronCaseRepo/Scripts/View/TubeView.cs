@@ -19,6 +19,11 @@ public class TubeView : MonoBehaviour, IPointerClickHandler
     [SerializeField] private int streamSortingOrder = 20;
     [SerializeField] private int sparkSortingOrder = 45;
 
+    [Header("Cap (rendered on the bottle sprite's canvas, pivot on its top edge)")]
+    [SerializeField] private Sprite capSprite;
+    [SerializeField] private Material capMaterial;
+    [SerializeField] private int capSortingOrder = 31;
+
     [Header("Bottle Interior (tube-local, at the default capacity)")]
     [SerializeField] private float bodyHalfWidth = 0.78f;
     [SerializeField] private float neckHalfWidth = 0.47f;
@@ -38,6 +43,7 @@ public class TubeView : MonoBehaviour, IPointerClickHandler
     private TubeLiquid _liquid;
     private PourStreamView _stream;
     private TubeSparksView _sparks;
+    private SpriteRenderer _cap;
     private bool _isSelected;
     private Vector3 _restLocalPos;
     private float _baseTubeHeight;
@@ -92,6 +98,12 @@ public class TubeView : MonoBehaviour, IPointerClickHandler
         _stream = CreateChild<PourStreamView>("PourStream", transform);
         _sparks = CreateChild<TubeSparksView>("SolvedSparks", transform);
 
+        _cap = CreateChild<SpriteRenderer>("Cap", body);
+        _cap.sprite = capSprite;
+        _cap.sharedMaterial = capMaterial;
+        _cap.sortingOrder = capSortingOrder;
+        _cap.gameObject.SetActive(false);
+
         outlineRenderer.color = Color.clear;
     }
 
@@ -113,6 +125,7 @@ public class TubeView : MonoBehaviour, IPointerClickHandler
         _restLocalPos = transform.localPosition;
         _anim.SetRestLocalPos(_restLocalPos);
         _anim.SetBottom(-tubeRenderer.size.y * 0.5f);
+        PlaceCap();
 
         _liquid.Setup(BuildLiquidShape(), settings, liquidMaterial, liquidSortingOrder);
         _stream.Setup(settings, pourStreamMaterial, splashMaterial, streamSortingOrder);
@@ -153,6 +166,17 @@ public class TubeView : MonoBehaviour, IPointerClickHandler
             EllipseRatio = ellipseRatio,
             BottomEllipseRatio = bottomEllipseRatio,
         };
+    }
+
+    // The cap shares the bottle sprite's pixel grid, so it takes the scale the sliced bottle is drawn at and sits on
+    // the top edge of the bottle.
+    private void PlaceCap()
+    {
+        var bottle = tubeRenderer.sprite;
+        var size = tubeRenderer.size;
+        var ppu = capSprite.pixelsPerUnit;
+        var scale = new Vector3(size.x * ppu / bottle.rect.width, size.y * ppu / (bottle.border.y + bottle.border.w), 1f);
+        _anim.SetCap(_cap.transform, new Vector3(0f, size.y * 0.5f, 0f), scale, capSprite.bounds.size.y * scale.y);
     }
 
     // Everything but the stream draws in front of the other tubes while this one pours.
@@ -272,6 +296,7 @@ public class TubeView : MonoBehaviour, IPointerClickHandler
         EventBus<TubeSolvedEvent>.Publish(new TubeSolvedEvent { SolvedColor = TopColor });
         HapticService.PlayWin();
 
+        _cap.color = TopColor;
         return _anim.PlayMarkSolved(_cachedSolvedPeak);
     }
 

@@ -8,6 +8,8 @@ public sealed class TubeAnimController
     private const int ChargeShakes = 1;
     // share of the travel over which the wind-up offset unwinds
     private const float WindUpRelease = 0.4f;
+    // share of the cap's pop-in it hangs over the mouth before it drops
+    private const float CapHang = 0.6f;
 
     private readonly Transform _transform;
     private readonly Transform _body;
@@ -35,6 +37,13 @@ public sealed class TubeAnimController
     private readonly TweenCallback<float> _setLean;
     private readonly TweenCallback _landAfterPour;
     private readonly EaseFunction _settle;
+
+    // the cap that snaps on when the tube is solved; it pivots on its top edge
+    private Transform _cap;
+    private Vector3 _capRest;
+    private Vector3 _capScale;
+    private float _capHeight;
+    private readonly TweenCallback<float> _setCapSquash;
 
     // pour state, read by the cached tween updates
     private readonly float[] _tilts = new float[TiltSamples];
@@ -71,6 +80,7 @@ public sealed class TubeAnimController
         _setStretch = SetStretch;
         _setLean = SetLean;
         _landAfterPour = LandAfterPour;
+        _setCapSquash = SetCapSquash;
         _settle = new SpringEase(settings.SettleDamping, settings.SettleFrequency).Function;
     }
 
@@ -84,6 +94,15 @@ public sealed class TubeAnimController
     {
         _bottomY = bottomY;
         ApplyBody();
+    }
+
+    // Body-local rest pose of the cap's top edge and its height there, so a squash keeps its bottom on the lip.
+    public void SetCap(Transform cap, Vector3 restLocalPos, Vector3 restScale, float height)
+    {
+        _cap = cap;
+        _capRest = restLocalPos;
+        _capScale = restScale;
+        _capHeight = height;
     }
 
     public void PlaySelect(bool selected)
@@ -222,7 +241,8 @@ public sealed class TubeAnimController
         var half = _settings.SolvedHopDuration * 0.5f;
 
         var seq = DOTween.Sequence();
-        var t = 0f;
+        // the snap of the cap is what pushes the bottle into its crouch
+        var t = _cap != null ? InsertCapSnap(seq) : 0f;
         seq.Insert(t, StretchTo(_stretch, crouch, crouchTime, Ease.OutCubic));
         t += crouchTime;
 
@@ -335,6 +355,30 @@ public sealed class TubeAnimController
         return DOTween.Sequence()
             .Append(StretchTo(from, squash, ImpactDuration, Ease.OutSine))
             .Append(StretchTo(squash, 1f, settle, _settle));
+    }
+
+    // The cap pops up over the mouth, drops onto the lip and snaps on with a squash that springs back.
+    // Returns the time it lands.
+    private float InsertCapSnap(Sequence seq)
+    {
+        var pop = _settings.CapPopDuration;
+        var drop = _settings.CapDropDuration;
+        var land = pop * CapHang + drop;
+
+        _cap.gameObject.SetActive(true);
+        _cap.localPosition = _capRest + Vector3.up * _settings.CapDropHeight;
+        _cap.localScale = Vector3.zero;
+
+        seq.Insert(0f, _cap.DOScale(_capScale, pop).SetEase(Ease.OutBack));
+        seq.Insert(land - drop, _cap.DOLocalMove(_capRest, drop).SetEase(Ease.InQuad));
+        seq.Insert(land, DOVirtual.Float(_settings.CapSnapSquash, 1f, _settings.CapSnapDuration, _setCapSquash).SetEase(_settle));
+        return land;
+    }
+
+    private void SetCapSquash(float squash)
+    {
+        _cap.localScale = new Vector3(_capScale.x / squash, _capScale.y * squash, 1f);
+        _cap.localPosition = _capRest + Vector3.down * (_capHeight * (1f - squash));
     }
 
     private Tween StretchTo(float from, float to, float duration, Ease ease)

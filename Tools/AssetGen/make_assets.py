@@ -1,6 +1,6 @@
-"""Builds the Magic Sort glass tube + liquid segment in 3D and renders them as 2D sprites.
+"""Builds the Magic Sort glass tube, its cap and the liquid segment in 3D and renders them as 2D sprites.
 
-Usage: blender -b --factory-startup -P make_assets.py -- <out_dir> [tube|water|bg|all] [samples]
+Usage: blender -b --factory-startup -P make_assets.py -- <out_dir> [tube|cap|water|bg|all] [samples]
 """
 import math
 import os
@@ -178,6 +178,48 @@ def tube_profile():
     return pts
 
 
+def cap_profile():
+    """Solid (r, z) profile of a cap that sits over the tube lip (r 0.80, z 4.50 to 4.98) with a little play."""
+    pts = []
+    pts += line((0.0, 5.035), (0.60, 5.035), 6)                 # slightly sunken top face
+    pts += arc(0.60, 5.06, 0.025, -90, 0, 4)[1:]
+    pts += line((0.625, 5.06), (0.78, 5.06), 3)[1:]
+    pts += arc(0.78, 4.98, 0.08, 90, 0, 8)[1:]                   # rounded top edge
+    pts += line((0.86, 4.98), (0.86, 4.58), 16)[1:]              # gripped side, ridges added later
+    pts += arc(0.83, 4.58, 0.03, 0, -90, 4)[1:]                  # rounded bottom edge
+    pts += line((0.83, 4.55), (0.0, 4.55), 6)[1:]
+    return pts
+
+
+CAP_RIDGES = 40
+
+
+def add_ridges(obj, z0, z1, count, depth):
+    """Fluted grip on the cap side: pushes the side vertices in and out with the angle around the axis."""
+    for v in obj.data.vertices:
+        x, y, z = v.co
+        r = math.hypot(x, y)
+        if r < 0.5 or not (z0 <= z <= z1):
+            continue
+        # fade the flutes out toward the rounded edges
+        fade = min(1.0, (z - z0) / 0.04, (z1 - z) / 0.04)
+        a = math.atan2(y, x)
+        k = 1.0 - depth * fade * (0.5 - 0.5 * math.cos(count * a)) / r
+        v.co = (x * k, y * k, z)
+    obj.data.update()
+
+
+def plastic_material():
+    mat = bpy.data.materials.new("CapPlastic")
+    mat.use_nodes = True
+    bsdf = mat.node_tree.nodes["Principled BSDF"]
+    bsdf.inputs["Base Color"].default_value = (0.85, 0.85, 0.85, 1.0)  # tinted with the solved color in Unity
+    bsdf.inputs["Roughness"].default_value = 0.35
+    bsdf.inputs["Coat Weight"].default_value = 0.6
+    bsdf.inputs["Coat Roughness"].default_value = 0.06
+    return mat
+
+
 def revolve(name, profile, thickness, steps=128):
     mesh = bpy.data.meshes.new(name)
     verts = [(r, 0.0, z) for r, z in profile]
@@ -246,22 +288,131 @@ def render(path):
     print(f"[assets] wrote {path}")
 
 
-def render_tube():
+def backdrop(cam, strength):
+    """Emissive wall behind the subject, seen by the camera and through the glass but by nothing else."""
+    view = cam.matrix_world.to_3x3() @ Vector((0, 0, -1))
+    bpy.ops.mesh.primitive_plane_add(size=60.0, location=Vector((0, 0, 2.5)) + view * 12.0)
+    wall = bpy.context.active_object
+    wall.name = "Backdrop"
+    wall.rotation_euler = (-view).to_track_quat("Z", "Y").to_euler()
+    mat = bpy.data.materials.new("BackdropMat")
+    mat.use_nodes = True
+    nodes = mat.node_tree.nodes
+    nodes.clear()
+    emit = nodes.new("ShaderNodeEmission")
+    emit.inputs["Strength"].default_value = strength
+    out = nodes.new("ShaderNodeOutputMaterial")
+    mat.node_tree.links.new(emit.outputs[0], out.inputs[0])
+    wall.data.materials.append(mat)
+    wall.visible_diffuse = False
+    wall.visible_glossy = False
+    wall.visible_shadow = False
+    return wall
+
+
+def render_linear(path):
+    """Renders to a float EXR (scene linear, no view transform) and returns its pixels, top row first."""
+    settings = bpy.context.scene.render.image_settings
+    settings.file_format = "OPEN_EXR"
+    settings.color_depth = "32"
+    render(path)
+    img = bpy.data.images.load(path)
+    w, h = img.size
+    px = np.array(img.pixels[:], dtype=np.float32).reshape(h, w, 4)[::-1]
+    bpy.data.images.remove(img)
+    settings.file_format = "PNG"
+    settings.color_depth = "8"
+    return px
+
+
+def linear_to_srgb(c):
+    c = np.clip(c, 0.0, 1.0)
+    return np.where(c <= 0.0031308, c * 12.92, 1.055 * np.power(c, 1.0 / 2.4) - 0.055)
+
+
+def save_rgba(path, rgba):
+    """Writes a byte PNG from top-row-first pixels; rgb must already be sRGB encoded."""
+    h, w = rgba.shape[:2]
+    img = bpy.data.images.new(os.path.basename(path), w, h, alpha=True)
+    img.alpha_mode = "STRAIGHT"
+    img.pixels.foreach_set(np.ascontiguousarray(rgba[::-1]).astype(np.float32).ravel())
+    img.filepath_raw = path
+    img.file_format = "PNG"
+    img.save()
+    print(f"[assets] wrote {path}")
+
+
+def tube_scene():
+    """The glass tube under the highlight cards, with the camera fitted to the Tube.png canvas."""
     reset_scene()
-    set_world((0.95, 0.98, 1.0), 1.0)
+    # a dim, cool surround: the glass edges pick it up as a tinted line instead of a white outline
+    set_world((0.42, 0.55, 0.85), 0.45)
     tube = revolve("Tube", tube_profile(), thickness=0.035)
     tube.data.materials.append(glass_material())
 
-    # softbox strips -> glossy highlight bands typical for casual glass
-    emissive_card("KeyStrip", (0.9, 9.0), (-4.5, -6.0, 3.0), (0, 0, 2.6), 9.0)
-    emissive_card("FillStrip", (0.4, 9.0), (5.0, -5.0, 3.0), (0, 0, 2.6), 5.0)
-    emissive_card("TopCard", (6.0, 6.0), (0.0, -2.0, 11.0), (0, 0, 4.8), 2.5)
-    emissive_card("BackRim", (3.0, 9.0), (0.0, 8.0, 3.0), (0, 0, 2.6), 1.5, (0.85, 0.93, 1.0))
+    # softbox strips -> crisp highlight bands: a strong one on the left, a thin one on the right
+    emissive_card("KeyBand", (2.2, 9.0), (-4.5, -6.0, 3.0), (0, 0, 2.6), 2.5)
+    emissive_card("KeyStrip", (0.35, 9.0), (-4.2, -6.4, 3.0), (0, 0, 2.6), 9.0)
+    emissive_card("FillStrip", (0.25, 9.0), (5.0, -5.0, 3.0), (0, 0, 2.6), 3.0)
+    emissive_card("TopCard", (6.0, 6.0), (0.0, -2.0, 11.0), (0, 0, 4.8), 1.5)
 
     cam = make_camera()
     # Tube.png is 696x1676 with 9-slice borders bottom=753, top=892 -> keep the same canvas
     fit_camera(cam, tube, (696, 1676), 50, 1652, target_z=2.5, max_width_px=606)
-    render(os.path.join(OUT, "Tube.png"))
+    return tube, cam
+
+
+def render_tube():
+    """Glass as a premultiplied sprite, pulled from two renders over a black and a white backdrop:
+    alpha is how much of the backdrop the glass hides, rgb is the light the glass adds on its own
+    (reflections and refracted surround). The highlights add light even where the glass is clear,
+    which a straight-alpha sprite cannot hold, so TubeGlass blends it premultiplied."""
+    tube_scene()
+    scene = bpy.context.scene
+    scene.render.film_transparent = False
+    cam = scene.camera
+    wall = backdrop(cam, 0.0)
+    over_black = render_linear(os.path.join(OUT, "tube_black.exr"))
+    wall.data.materials[0].node_tree.nodes["Emission"].inputs["Strength"].default_value = 1.0
+    over_white = render_linear(os.path.join(OUT, "tube_white.exr"))
+
+    alpha = np.clip(1.0 - (over_white[..., :3] - over_black[..., :3]).mean(axis=2), 0.0, 1.0)
+    rgb = over_black[..., :3]
+    # the matte is noise outside the glass; keep only what the glass actually covers
+    alpha[alpha < 0.01] = 0.0
+    rgb = rgb * (alpha[..., None] > 0.0)
+    save_rgba(os.path.join(OUT, "Tube.png"), np.concatenate([linear_to_srgb(rgb), alpha[..., None]], axis=2))
+
+
+def render_cap():
+    """The cap seen through the tube camera, cropped to the rows it covers so its top edge is the top of
+    Tube.png: placed with a top-center pivot at the top of the tube sprite, it sits right on the lip."""
+    tube, cam = tube_scene()
+    tube.hide_render = True
+    set_world((0.92, 0.95, 1.0), 0.22)
+    key = bpy.data.lights.new("Key", "AREA")
+    key.energy = 320
+    key.size = 5.0
+    key_obj = bpy.data.objects.new("Key", key)
+    key_obj.location = (-4.0, -5.0, 10.0)
+    key_obj.rotation_euler = (Vector((0, 0, 4.8)) - key_obj.location).to_track_quat("-Z", "Y").to_euler()
+    bpy.context.scene.collection.objects.link(key_obj)
+
+    cap = revolve("Cap", cap_profile(), thickness=0.0, steps=8 * CAP_RIDGES)
+    add_ridges(cap, 4.58, 4.98, CAP_RIDGES, 0.018)
+    cap.data.materials.append(plastic_material())
+
+    full = os.path.join(OUT, "cap_full.png")
+    render(full)
+    img = bpy.data.images.load(full)
+    w, h = img.size
+    px = np.array(img.pixels[:], dtype=np.float32).reshape(h, w, 4)[::-1]
+    bpy.data.images.remove(img)
+    rows = np.nonzero(px[..., 3].max(axis=1) > 0.0)[0]
+    bottom = int(rows.max()) + 4
+    print(f"[assets] cap covers rows {int(rows.min())}..{int(rows.max())} of {h}")
+    # pixels come back as stored, already sRGB
+    save_rgba(os.path.join(OUT, "Cap.png"), px[:bottom])
 
 
 def render_water():
@@ -320,6 +471,8 @@ def render_bg():
 
 if WHAT in ("tube", "all"):
     render_tube()
+if WHAT in ("cap", "all"):
+    render_cap()
 if WHAT in ("water", "all"):
     render_water()
 if WHAT in ("bg", "all"):

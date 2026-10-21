@@ -62,7 +62,7 @@ SpriteRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 10754, guid: 0000000000000000f000000000000000, type: 0}
+  - {fileID: 2100000, guid: 525a7686c481c6977f1309e5f75d0856, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -211,6 +211,9 @@ MonoBehaviour:
   liquidMaterial: {fileID: 2100000, guid: ef00cfa815e340f5bd4f1043745b7b7a, type: 2}
   pourStreamMaterial: {fileID: 2100000, guid: ce7292fdcd77460da91734110c6cb641, type: 2}
   splashMaterial: {fileID: 2100000, guid: 933aff2b5a19463e8f64c3b12cb5fecc, type: 2}
+  capSprite: {fileID: 21300000, guid: a62aebed39dcb2949fa4f242350f028d, type: 3}
+  capMaterial: {fileID: 10754, guid: 0000000000000000f000000000000000, type: 0}
+  capSortingOrder: 31
   settings: {fileID: 11400000, guid: a7f20922a1f3e1840b6fdc4738dca336, type: 2}
   defaultCapacity: 3
 --- !u!61 &6305860227426178007

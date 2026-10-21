@@ -78,6 +78,11 @@ MonoBehaviour:
   _solvedHopDuration: 0.36
   _solvedLandSquash: 0.88
   _solvedBounceDuration: 0.4
+  _capPopDuration: 0.12
+  _capDropHeight: 0.7
+  _capDropDuration: 0.1
+  _capSnapSquash: 0.8
+  _capSnapDuration: 0.3
   _enterDuration: 0.5
   _enterStaggerDelay: 0.06
   _cloakAnticipationDip: 0.15
