@@ -8,9 +8,16 @@ public class TubeView : MonoBehaviour, IPointerClickHandler
     private static readonly int GlowLineId = Shader.PropertyToID("_GlowLine");
     private static readonly int FlashId = Shader.PropertyToID("_Flash");
     private static readonly int ShineId = Shader.PropertyToID("_Shine");
+    private static readonly int SweepPeriodId = Shader.PropertyToID("_SweepPeriod");
+    private static readonly int SweepStartId = Shader.PropertyToID("_SweepStart");
 
     private const float SolvedFlashDuration = 0.35f;
     private const float SolvedShineDuration = 0.5f;
+
+    // the idle shine runs on each bottle's own clock: a rare pass at its own pace, the first one a random moment in
+    private const float IdleShinePeriodMin = 15f;
+    private const float IdleShinePeriodMax = 20f;
+    private const float IdleShineMaxDelay = 10f;
 
     [Header("References")]
     // squash & stretch target holding the glass, cloak and liquid; the root only moves and tilts
@@ -25,8 +32,6 @@ public class TubeView : MonoBehaviour, IPointerClickHandler
     [SerializeField] private int liquidSortingOrder = 10;
     [SerializeField] private int streamSortingOrder = 20;
     [SerializeField] private int sparkSortingOrder = 45;
-    // the solved sunburst, behind every bottle
-    [SerializeField] private int haloSortingOrder = 2;
 
     [Header("Cork (rendered on the bottle sprite's canvas, pivot on its top edge)")]
     [SerializeField] private Sprite capSprite;
@@ -147,8 +152,11 @@ public class TubeView : MonoBehaviour, IPointerClickHandler
 
         _liquid.Setup(BuildLiquidShape(), settings, liquidMaterial, liquidSortingOrder);
         _stream.Setup(settings, pourStreamMaterial, splashMaterial, streamSortingOrder);
-        _sparks.Setup(splashMaterial, sparkSortingOrder, haloSortingOrder);
+        _sparks.Setup(splashMaterial, sparkSortingOrder);
         CacheSortingOrders();
+        // shader time is Time.time under URP
+        SetGlassFloat(SweepPeriodId, Random.Range(IdleShinePeriodMin, IdleShinePeriodMax));
+        SetGlassFloat(SweepStartId, Time.time + Random.Range(0f, IdleShineMaxDelay));
 
         _waterSlots = new TubeWaterSlots(_liquid, data.capacity);
         for (var i = 0; i < data.waters.Count; i++)

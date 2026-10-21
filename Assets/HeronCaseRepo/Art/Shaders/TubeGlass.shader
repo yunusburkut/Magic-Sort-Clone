@@ -15,9 +15,10 @@ Shader "HeronCase/TubeGlass"
         _SweepColor ("Sweep Color", Color) = (1,1,1,1)
         _SweepStrength ("Sweep Strength", Range(0,1)) = 0.55
         _SweepWidth ("Sweep Width", Range(0.01,0.5)) = 0.09
-        _SweepPeriod ("Sweep Period (s)", Float) = 3.5
-        _SweepDuration ("Sweep Travel Time (s)", Float) = 3.5
-        _SweepStagger ("Stagger Per World Unit", Float) = 0.06
+        _SweepDuration ("Sweep Travel Time (s)", Float) = 1.6
+        // driven per tube from code: how often it passes, and the shader time of its first pass
+        [PerRendererData] _SweepPeriod ("Sweep Period (s)", Float) = 17.5
+        [PerRendererData] _SweepStart ("Sweep Start (s)", Float) = 0
 
         [Header(Select Glow)]
         _GlowColor ("Glow Color", Color) = (1,0.96,0.85,1)
@@ -94,7 +95,7 @@ Shader "HeronCase/TubeGlass"
             half   _SweepWidth;
             float  _SweepPeriod;
             float  _SweepDuration;
-            float  _SweepStagger;
+            float  _SweepStart;
             half4  _GlowColor;
             half   _GlowRim;
             half   _GlowRimLow;
@@ -140,14 +141,15 @@ Shader "HeronCase/TubeGlass"
             float rim = smoothstep(0.2, 0.45, tex.a);
             float a = saturate(tex.a * lerp(_BodyAlpha, _RimAlpha, rim));
 
-            // diagonal shine sweep, staggered across the board by world x; it crosses in _SweepDuration and then rests
-            // off the tube for the rest of the period. The 9-slice squeezes the uvs of the stretched wall, so the
-            // sweep runs in tube-local space, where a 2 x 6 tube spans 0..1.
-            float phase = frac(_Time.y / _SweepPeriod + IN.positionWS.x * _SweepStagger);
+            // diagonal shine sweep on each tube's own clock: the first pass starts at _SweepStart, then one every
+            // _SweepPeriod; it crosses in _SweepDuration and rests off the tube in between. The 9-slice squeezes the
+            // uvs of the stretched wall, so the sweep runs in tube-local space, where a 2 x 6 tube spans 0..1.
+            float since = _Time.y - _SweepStart;
+            float phase = frac(since / max(_SweepPeriod, 1e-3));
             float2 sp = IN.local / float2(2.0, 6.0) + 0.5;
             float s = sp.y + sp.x * 0.45;
             float center = lerp(-0.5, 2.2, saturate(phase * _SweepPeriod / max(_SweepDuration, 1e-3)));
-            float sweep = (1.0 - smoothstep(0.0, _SweepWidth, abs(s - center))) * glass * _SweepStrength;
+            float sweep = (1.0 - smoothstep(0.0, _SweepWidth, abs(s - center))) * glass * _SweepStrength * step(0.0, since);
             rgb = lerp(rgb, _SweepColor.rgb, sweep);
             a = lerp(a, 1.0, sweep);
 

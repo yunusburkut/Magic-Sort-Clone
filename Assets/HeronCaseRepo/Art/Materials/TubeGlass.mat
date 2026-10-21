@@ -37,8 +37,7 @@ Material:
     - _RimAlpha: 1
     - _Reflection: 1
     - _SweepDuration: 1.6
-    - _SweepPeriod: 8
-    - _SweepStagger: 0.06
+    - _SweepPeriod: 17.5
     - _SweepStrength: 0.35
     - _SweepWidth: 0.09
     m_Colors:
