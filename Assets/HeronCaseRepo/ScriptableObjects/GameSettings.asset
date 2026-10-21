@@ -31,10 +31,13 @@ MonoBehaviour:
   _liftDuration: 0.14
   _anticipationDip: 0.08
   _anticipationDuration: 0.05
-  _pourMoveDuration: 0.3
+  _pourWindUpDuration: 0.06
+  _pourWindUpDistance: 0.3
+  _pourWindUpLean: 6
+  _pourMoveDuration: 0.14
   _pourFlowBaseDuration: 0.15
   _pourFlowDurationPerSlot: 0.2
-  _pourReturnDuration: 0.3
+  _pourReturnDuration: 0.22
   _pourArcHeight: 1.5
   _pourLipHeight: 1
   _pourLipSideOffset: 0.15
@@ -63,7 +66,7 @@ MonoBehaviour:
   _shakeDecay2: 0.4
   _solvedSquashY: 0.82
   _solvedSquashDuration: 0.22
-  _solvedChargeDuration: 0.08
+  _solvedChargeDuration: 0.06
   _solvedChargeTremble: 0.02
   _solvedStretch: 1.12
   _solvedHopHeight: 0.6

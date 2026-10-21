@@ -30,7 +30,10 @@ public class GameSettings : ScriptableObject
     [SerializeField, FormerlySerializedAs("anticipationDuration")] private float _anticipationDuration = 0.06f;
 
     [Header("Pour Animation")]
-    [SerializeField] private float _pourMoveDuration = 0.4f;
+    [SerializeField] private float _pourWindUpDuration = 0.06f;
+    [SerializeField] private float _pourWindUpDistance = 0.3f;
+    [SerializeField] private float _pourWindUpLean = 6f;
+    [SerializeField] private float _pourMoveDuration = 0.14f;
     [SerializeField] private float _pourFlowBaseDuration = 0.2f;
     [SerializeField] private float _pourFlowDurationPerSlot = 0.3f;
     [SerializeField] private float _pourReturnDuration = 0.4f;
@@ -72,7 +75,7 @@ public class GameSettings : ScriptableObject
     [Header("Solved Animation")]
     [SerializeField, FormerlySerializedAs("solvedSquashY")] private float _solvedSquashY = 0.82f;
     [SerializeField, FormerlySerializedAs("solvedSquashDuration")] private float _solvedSquashDuration = 0.22f;
-    [SerializeField] private float _solvedChargeDuration = 0.08f;
+    [SerializeField] private float _solvedChargeDuration = 0.06f;
     [SerializeField] private float _solvedChargeTremble = 0.02f;
     [SerializeField] private float _solvedStretch = 1.12f;
     [SerializeField] private float _solvedHopHeight = 0.6f;
@@ -121,6 +124,9 @@ public class GameSettings : ScriptableObject
     public float LiftDuration => _liftDuration;
     public float AnticipationDip => _anticipationDip;
     public float AnticipationDuration => _anticipationDuration;
+    public float PourWindUpDuration => _pourWindUpDuration;
+    public float PourWindUpDistance => _pourWindUpDistance;
+    public float PourWindUpLean => _pourWindUpLean;
     public float PourMoveDuration => _pourMoveDuration;
     public float PourFlowBaseDuration => _pourFlowBaseDuration;
     public float PourFlowDurationPerSlot => _pourFlowDurationPerSlot;

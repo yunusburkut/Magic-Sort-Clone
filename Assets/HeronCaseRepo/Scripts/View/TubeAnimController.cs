@@ -6,6 +6,8 @@ public sealed class TubeAnimController
     private const int TiltSamples = 9;
     private const float ImpactDuration = 0.08f;
     private const int ChargeShakes = 1;
+    // share of the travel over which the wind-up offset unwinds
+    private const float WindUpRelease = 0.4f;
 
     private readonly Transform _transform;
     private readonly Transform _body;
@@ -45,6 +47,9 @@ public sealed class TubeAnimController
     private Vector3 _startPos;
     private float _startAngle;
     private Vector3 _arcControl;
+    private Vector3 _windUpOffset;
+    private float _windUpLean;
+    private float _windUpShare;
     private Vector3 _pourPos;
     private Vector3 _flowEndPos;
     private float _flowEndAngle;
@@ -272,20 +277,27 @@ public sealed class TubeAnimController
         _arcControl = new Vector3((_startPos.x + _pourPos.x) * 0.5f, Mathf.Max(_startPos.y, _pourPos.y) + _settings.PourArcHeight, 0f);
         _restWorldPos = restWorldPos;
 
+        var windUp = _settings.PourWindUpDuration;
         var move = _settings.PourMoveDuration;
         var flowDuration = _settings.PourFlowBaseDuration + _settings.PourFlowDurationPerSlot * amount;
         var crouch = _settings.SquashCrouch;
         var jump = _settings.SquashJumpStretch;
 
-        // a quick push-off on the way over; the body is back to rest before the lip has to meet the anchor
+        // the wind-up draws back away from the target, a little down and leaning away from it
+        var pull = windUp > 0f ? _settings.PourWindUpDistance : 0f;
+        _windUpOffset = new Vector3(PourTiltSign * pull, -0.5f * pull, 0f);
+        _windUpLean = windUp > 0f ? -PourTiltSign * _settings.PourWindUpLean : 0f;
+        _windUpShare = windUp / (windUp + move);
+
+        // it crouches into the wind-up and pushes off stretched; the body is back to rest before the lip has to meet the anchor
         var body = DOTween.Sequence()
-            .Append(StretchTo(_stretch, crouch, move * 0.2f, Ease.OutSine))
-            .Append(StretchTo(crouch, jump, move * 0.2f, Ease.OutSine))
-            .Append(StretchTo(jump, 1f, move * 0.4f, Ease.InOutSine))
-            .Insert(0f, LeanTo(_lean, 0f, move * 0.5f, Ease.OutSine));
+            .Append(StretchTo(_stretch, crouch, windUp, Ease.OutSine))
+            .Append(StretchTo(crouch, jump, move * 0.25f, Ease.OutSine))
+            .Append(StretchTo(jump, 1f, move * 0.5f, Ease.InOutSine))
+            .Insert(0f, LeanTo(_lean, 0f, (windUp + move) * 0.5f, Ease.OutSine));
 
         _pourSequence = DOTween.Sequence();
-        _pourSequence.Append(DOVirtual.Float(0f, 1f, move, _moveUpdate).SetEase(Ease.Linear));
+        _pourSequence.Append(DOVirtual.Float(0f, 1f, windUp + move, _moveUpdate).SetEase(Ease.Linear));
         _pourSequence.Join(body);
         _pourSequence.AppendCallback(callbacks.OnTransfer);
         _pourSequence.Append(DOVirtual.Float(0f, 1f, flowDuration, _flowUpdate).SetEase(Ease.InOutSine));
@@ -380,11 +392,16 @@ public sealed class TubeAnimController
         _transform.SetPositionAndRotation(position, Quaternion.Euler(0f, 0f, angle));
     }
 
+    // A short wind-up, then it springs over fast and eases out into the pour pose while the wind-up unwinds.
     private void UpdateMove(float p)
     {
-        var t = EaseInOutSine(p);
-        var tilt = EaseInOutQuad(Mathf.Clamp01((p - 0.2f) / 0.8f));
-        SetPose(QuadBezier(_startPos, _arcControl, _pourPos, t), Mathf.LerpUnclamped(_startAngle, _tilts[0], tilt));
+        var a = _windUpShare;
+        var q = Mathf.Clamp01((p - a) / (1f - a));
+        var windUp = p < a ? Mathf.Sin(p / a * Mathf.PI * 0.5f) : 1f - EaseInOutSine(Mathf.Clamp01(q / WindUpRelease));
+        var lean = p < a ? _windUpLean * windUp : _windUpLean;
+        var t = 1f - (1f - q) * (1f - q);
+        var tilt = EaseInOutQuad(Mathf.Clamp01((q - 0.1f) / 0.9f));
+        SetPose(QuadBezier(_startPos, _arcControl, _pourPos, t) + _windUpOffset * windUp, Mathf.LerpUnclamped(_startAngle + lean, _tilts[0], tilt));
     }
 
     private void UpdateFlow(float p)
