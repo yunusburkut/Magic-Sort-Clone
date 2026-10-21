@@ -10,7 +10,6 @@ public class LevelController : MonoBehaviour
 
     [Header("Prefabs")]
     [SerializeField] private TubeView tubePrefab;
-    [SerializeField] private WaterView waterPrefab;
 
     [Header("Layout")]
     [SerializeField] private float tubeSpacing = 1.5f;
@@ -87,7 +86,7 @@ public class LevelController : MonoBehaviour
 #if UNITY_EDITOR
                 tubeView.name = $"Tube_{i}";
 #endif
-                tubeView.Init(tubeDataList[i], waterPrefab, colorPalette);
+                tubeView.Init(tubeDataList[i], colorPalette);
                 tubeView.PlayEnterAnimation(animIndex * settings.EnterStaggerDelay);
                 _tubeViews.Add(tubeView);
                 animIndex++;

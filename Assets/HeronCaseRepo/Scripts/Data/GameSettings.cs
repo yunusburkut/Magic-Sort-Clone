@@ -6,9 +6,20 @@ public class GameSettings : ScriptableObject
 {
     [Header("Water Layout")]
     [SerializeField, FormerlySerializedAs("waterSlotHeight")] private float _waterSlotHeight = 0.5f;
-    [SerializeField, FormerlySerializedAs("waterYStackOffset")] private float _waterYStackOffset = 0.25f;
     [SerializeField, FormerlySerializedAs("waterRevealDuration")] private float _waterRevealDuration = 0.3f;
-    [SerializeField] private float _waterSegmentOverlap = 0.05f;
+    [SerializeField] private Color _hiddenLiquidColor = new Color(0.0566f, 0.0566f, 0.0566f, 1f);
+
+    [Header("Liquid Slosh")]
+    [SerializeField] private float _sloshFrequency = 1.6f;
+    [SerializeField] private float _sloshDamping = 0.12f;
+    [SerializeField] private float _sloshAccelGain = 0.15f;
+    [SerializeField] private float _sloshVerticalGain = 0.03f;
+    [SerializeField] private float _sloshSpinGain = 2.5f;
+    [SerializeField] private float _sloshSwirl = 0.1f;
+    [SerializeField] private float _sloshMaxSlope = 0.22f;
+    [SerializeField] private float _sloshMaxAccel = 300f;
+    [SerializeField] private float _sloshIdle = 0.06f;
+    [SerializeField] private float _sloshImpactKick = 1.5f;
 
     [Header("Tube Selection")]
     [SerializeField, FormerlySerializedAs("outlineColor")] private Color _outlineColor = new Color(1f, 0.85f, 0.3f, 1f);
@@ -19,15 +30,23 @@ public class GameSettings : ScriptableObject
     [SerializeField, FormerlySerializedAs("anticipationDuration")] private float _anticipationDuration = 0.06f;
 
     [Header("Pour Animation")]
-    [SerializeField, FormerlySerializedAs("pourOffsetX")] private float _pourOffsetX = 0.8f;
-    [SerializeField, FormerlySerializedAs("pourAngle")] private float _pourAngle = 120f;
-    [SerializeField, FormerlySerializedAs("pourDuration")] private float _pourDuration = 0.25f;
-    [SerializeField, FormerlySerializedAs("pourHeightOffset")] private float _pourHeightOffset = 0.5f;
-    [SerializeField, FormerlySerializedAs("pourHoldDuration")] private float _pourHoldDuration = 0.4f;
+    [SerializeField] private float _pourMoveDuration = 0.4f;
+    [SerializeField] private float _pourFlowBaseDuration = 0.2f;
+    [SerializeField] private float _pourFlowDurationPerSlot = 0.3f;
+    [SerializeField] private float _pourReturnDuration = 0.4f;
     [SerializeField, FormerlySerializedAs("pourArcHeight")] private float _pourArcHeight = 0.8f;
-    [SerializeField] private float _pourLiftAmount = 0.3f;
-    [SerializeField] private float _pourLiftDuration = 0.12f;
-    [SerializeField] private float _pourStreamInDuration = 0.08f;
+    [SerializeField] private float _pourLipHeight = 1f;
+    [SerializeField] private float _pourLipSideOffset = 0.15f;
+    [SerializeField] private float _pourMaxAngle = 115f;
+    [SerializeField] private int _pourSortingBoost = 100;
+
+    [Header("Pour Stream")]
+    [SerializeField] private float _streamLipWidth = 0.5f;
+    [SerializeField] private float _streamEndWidth = 0.36f;
+    [SerializeField] private float _streamFallDuration = 0.13f;
+    [SerializeField] private float _streamMouthMargin = 0.2f;
+    [SerializeField] private float _splashMistRate = 34f;
+    [SerializeField] private float _splashSprayRate = 40f;
 
     [Header("Shake Animation")]
     [SerializeField, FormerlySerializedAs("shakeMagnitude")] private float _shakeMagnitude = 0.08f;
@@ -62,24 +81,39 @@ public class GameSettings : ScriptableObject
     [SerializeField, FormerlySerializedAs("queuedPourSpeedMultiplier")] private float _queuedPourSpeedMultiplier = 1.75f;
 
     public float WaterSlotHeight => _waterSlotHeight;
-    public float WaterSegmentOverlap => _waterSegmentOverlap;
-    public float WaterYStackOffset => _waterYStackOffset;
     public float WaterRevealDuration => _waterRevealDuration;
+    public Color HiddenLiquidColor => _hiddenLiquidColor;
+    public float SloshFrequency => _sloshFrequency;
+    public float SloshDamping => _sloshDamping;
+    public float SloshAccelGain => _sloshAccelGain;
+    public float SloshVerticalGain => _sloshVerticalGain;
+    public float SloshSpinGain => _sloshSpinGain;
+    public float SloshSwirl => _sloshSwirl;
+    public float SloshMaxSlope => _sloshMaxSlope;
+    public float SloshMaxAccel => _sloshMaxAccel;
+    public float SloshIdle => _sloshIdle;
+    public float SloshImpactKick => _sloshImpactKick;
     public Color OutlineColor => _outlineColor;
     public float OutlineThickness => _outlineThickness;
     public float LiftAmount => _liftAmount;
     public float LiftDuration => _liftDuration;
     public float AnticipationDip => _anticipationDip;
     public float AnticipationDuration => _anticipationDuration;
-    public float PourOffsetX => _pourOffsetX;
-    public float PourAngle => _pourAngle;
-    public float PourDuration => _pourDuration;
-    public float PourHeightOffset => _pourHeightOffset;
-    public float PourHoldDuration => _pourHoldDuration;
+    public float PourMoveDuration => _pourMoveDuration;
+    public float PourFlowBaseDuration => _pourFlowBaseDuration;
+    public float PourFlowDurationPerSlot => _pourFlowDurationPerSlot;
+    public float PourReturnDuration => _pourReturnDuration;
     public float PourArcHeight => _pourArcHeight;
-    public float PourLiftAmount => _pourLiftAmount;
-    public float PourLiftDuration => _pourLiftDuration;
-    public float PourStreamInDuration => _pourStreamInDuration;
+    public float PourLipHeight => _pourLipHeight;
+    public float PourLipSideOffset => _pourLipSideOffset;
+    public float PourMaxAngle => _pourMaxAngle;
+    public int PourSortingBoost => _pourSortingBoost;
+    public float StreamLipWidth => _streamLipWidth;
+    public float StreamEndWidth => _streamEndWidth;
+    public float StreamFallDuration => _streamFallDuration;
+    public float StreamMouthMargin => _streamMouthMargin;
+    public float SplashMistRate => _splashMistRate;
+    public float SplashSprayRate => _splashSprayRate;
     public float ShakeMagnitude => _shakeMagnitude;
     public float ShakeDuration => _shakeDuration;
     public float ShakeDecay1 => _shakeDecay1;

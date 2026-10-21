@@ -874,7 +874,6 @@ MonoBehaviour:
   levelData: {fileID: 11400000, guid: ef4c425dd07f1174296cce67384ce2ad, type: 2}
   colorPalette: {fileID: 11400000, guid: bd193a95c53c3864998db2d7527908e6, type: 2}
   tubePrefab: {fileID: 7744950984478287689, guid: b54809afd35529f40b937434224be165, type: 3}
-  waterPrefab: {fileID: 3028682428878221589, guid: 546f139844efaaa4fa6bad835de68daa, type: 3}
   tubeSpacing: 3
   rowSpacing: 8
   tubesPerRow: 4

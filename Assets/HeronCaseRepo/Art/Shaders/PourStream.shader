@@ -1,32 +1,37 @@
 Shader "HeronCase/PourStream"
 {
+    // Ribbon mesh built by PourStreamView along the falling stream.
+    //   uv0.x  position across the ribbon, the liquid edge is at |x| = 1
+    //   uv1    (distance from the lip, distance to the head) in world units
+    //   uv2    (half width, distance from the tail) in world units
+    //   color  liquid color, alpha = overall opacity
+    // _Caps (per renderer): (round tail, round head, fade head into the target liquid)
     Properties
     {
-        [PerRendererData] _MainTex ("Sprite Texture", 2D) = "white" {}
         _Color ("Tint", Color) = (1,1,1,1)
 
         [Header(Shape)]
-        _Width ("Stream Width (of quad)", Range(0.1,1)) = 0.7
-        _ThinWidth ("Width At Zero Alpha", Range(0,1)) = 0.2
-        _Wobble ("Width Wobble", Range(0,0.5)) = 0.14
-        _Sway ("Center Sway", Range(0,0.3)) = 0.06
-        _WobbleFreq ("Wobble Frequency (per unit)", Float) = 2.5
-        _FlowSpeed ("Flow Speed (units/s)", Float) = 6
-        _EndFade ("Quad End Fade (uv)", Range(0,0.2)) = 0.03
+        _Wobble ("Edge Wobble", Range(0,0.5)) = 0.12
+        _Sway ("Center Sway", Range(0,0.3)) = 0.05
+        _WobbleFreq ("Wobble Frequency (per unit)", Float) = 2.2
+        _FlowSpeed ("Flow Speed (units/s)", Float) = 7
+        _SettleLength ("Smooth Length At Lip", Float) = 0.6
+        _HeadFadeLength ("Head Fade Length", Float) = 0.18
 
         [Header(Casual Color)]
-        _Saturation ("Saturation", Range(0,2)) = 1.15
-        _Brightness ("Brightness", Range(0.5,2)) = 1.12
-        _EdgeDarken ("Edge Darken", Range(0,1)) = 0.3
+        _Saturation ("Saturation", Range(0,2)) = 1.12
+        _Brightness ("Brightness", Range(0.5,2)) = 1.05
+        _EdgeDarken ("Edge Darken", Range(0,1)) = 0.18
+        _Lighten ("Lighten (matches liquid seen through the glass, linear)", Range(0,1)) = 0.13
 
         [Header(Highlights)]
         _ShineColor ("Shine Color", Color) = (1,1,1,1)
-        _ShinePos ("Shine Position (-1..1)", Range(-1,1)) = -0.38
-        _ShineWidth ("Shine Width", Range(0.02,0.6)) = 0.16
-        _ShineStrength ("Shine Strength", Range(0,1)) = 0.6
-        _BackShineStrength ("Back Shine Strength", Range(0,1)) = 0.2
+        _ShinePos ("Shine Position (-1..1)", Range(-1,1)) = -0.4
+        _ShineWidth ("Shine Width", Range(0.02,0.6)) = 0.15
+        _ShineStrength ("Shine Strength", Range(0,1)) = 0.55
+        _BackShineStrength ("Back Shine Strength", Range(0,1)) = 0.18
         _StreakStrength ("Flowing Streaks", Range(0,1)) = 0.35
-        _StreakFreq ("Streak Frequency (per unit)", Float) = 7
+        _StreakFreq ("Streak Frequency (per unit)", Float) = 6
     }
 
     SubShader
@@ -38,7 +43,6 @@ Shader "HeronCase/PourStream"
             "RenderPipeline" = "UniversalPipeline"
             "IgnoreProjector" = "True"
             "PreviewType" = "Plane"
-            "CanUseSpriteAtlas" = "True"
         }
 
         Blend SrcAlpha OneMinusSrcAlpha
@@ -51,7 +55,9 @@ Shader "HeronCase/PourStream"
         struct Attributes
         {
             float4 positionOS : POSITION;
-            float2 uv         : TEXCOORD0;
+            float2 uv0        : TEXCOORD0;
+            float2 uv1        : TEXCOORD1;
+            float2 uv2        : TEXCOORD2;
             float4 color      : COLOR;
             UNITY_VERTEX_INPUT_INSTANCE_ID
         };
@@ -59,27 +65,25 @@ Shader "HeronCase/PourStream"
         struct Varyings
         {
             float4 positionCS : SV_POSITION;
-            float2 uv         : TEXCOORD0;
-            float2 positionWS : TEXCOORD1;
+            float2 uv0        : TEXCOORD0;
+            float2 uv1        : TEXCOORD1;
+            float2 uv2        : TEXCOORD2;
             half4  color      : COLOR;
             UNITY_VERTEX_OUTPUT_STEREO
         };
 
-        TEXTURE2D(_MainTex);
-        SAMPLER(sampler_MainTex);
-
         CBUFFER_START(UnityPerMaterial)
             half4  _Color;
-            half   _Width;
-            half   _ThinWidth;
             half   _Wobble;
             half   _Sway;
             float  _WobbleFreq;
             float  _FlowSpeed;
-            half   _EndFade;
+            float  _SettleLength;
+            float  _HeadFadeLength;
             half   _Saturation;
             half   _Brightness;
             half   _EdgeDarken;
+            half   _Lighten;
             half4  _ShineColor;
             half   _ShinePos;
             half   _ShineWidth;
@@ -88,6 +92,9 @@ Shader "HeronCase/PourStream"
             half   _StreakStrength;
             float  _StreakFreq;
         CBUFFER_END
+
+        // per renderer, set from PourStreamView
+        float4 _Caps;
 
         float Hash11(float p)
         {
@@ -104,7 +111,6 @@ Shader "HeronCase/PourStream"
             return frac(p.x * p.y);
         }
 
-        // Smooth 1D value noise in [0,1].
         float Noise1(float x)
         {
             float i = floor(x);
@@ -113,7 +119,6 @@ Shader "HeronCase/PourStream"
             return lerp(Hash11(i), Hash11(i + 1.0), f);
         }
 
-        // Smooth 2D value noise in [0,1].
         float Noise2(float2 p)
         {
             float2 i = floor(p);
@@ -126,15 +131,23 @@ Shader "HeronCase/PourStream"
             return lerp(lerp(a, b, f.x), lerp(c, d, f.x), f.y);
         }
 
+        // Half width left at a distance d from a rounded end of radius r (1 = full width).
+        float CapWidth(float d, float r)
+        {
+            float k = 1.0 - saturate(d / max(r, 1e-4));
+            return sqrt(saturate(1.0 - k * k));
+        }
+
         Varyings vert(Attributes IN)
         {
             Varyings OUT;
             UNITY_SETUP_INSTANCE_ID(IN);
             UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(OUT);
             OUT.positionCS = TransformObjectToHClip(IN.positionOS.xyz);
-            OUT.positionWS = TransformObjectToWorld(IN.positionOS.xyz).xy;
-            OUT.uv         = IN.uv;
-            OUT.color      = IN.color * _Color;
+            OUT.uv0 = IN.uv0;
+            OUT.uv1 = IN.uv1;
+            OUT.uv2 = IN.uv2;
+            OUT.color = IN.color * _Color;
             return OUT;
         }
 
@@ -142,19 +155,24 @@ Shader "HeronCase/PourStream"
         {
             UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(IN);
 
-            // Pattern coordinate scrolls in world space so it is independent of the quad's stretch.
-            // f(y + speed * t) makes every feature travel downward.
-            float flowY = IN.positionWS.y + _Time.y * _FlowSpeed;
+            float x = IN.uv0.x;
+            float dist = IN.uv1.x;
+            float toHead = IN.uv1.y;
+            float hw = IN.uv2.x;
+            float fromTail = IN.uv2.y;
 
-            // Vertex alpha drives thickness: the stream thins to a trickle while fading out.
-            half fade = IN.color.a;
-            half width = _Width * lerp(_ThinWidth, 1.0, fade);
-            width *= 1.0 + _Wobble * (Noise1(flowY * _WobbleFreq) * 2.0 - 1.0);
-            half center = _Sway * (Noise1(flowY * _WobbleFreq * 0.6 + 17.0) * 2.0 - 1.0);
+            // f(dist - speed * t) makes every feature travel down the stream
+            float flowCoord = dist - _Time.y * _FlowSpeed;
 
-            // xn: -1..1 across the stream body, |xn| > 1 is outside
-            float x = IN.uv.x * 2.0 - 1.0;
-            float xn = (x - center) / max(width, 1e-3);
+            // the stream leaves the lip as a smooth sheet and gets livelier as it falls
+            float settle = saturate(dist / max(_SettleLength, 1e-3));
+            float edge = 1.0 + _Wobble * settle * (Noise1(flowCoord * _WobbleFreq) * 2.0 - 1.0);
+            float center = _Sway * settle * (Noise1(flowCoord * _WobbleFreq * 0.6 + 17.0) * 2.0 - 1.0);
+
+            edge *= lerp(1.0, CapWidth(toHead, hw), _Caps.y);
+            edge *= lerp(1.0, CapWidth(fromTail, hw), _Caps.x);
+
+            float xn = (x - center) / max(edge, 1e-3);
             float d = abs(xn);
             float aa = max(fwidth(d), 1e-4);
             float body = 1.0 - smoothstep(1.0 - aa, 1.0 + aa, d);
@@ -163,27 +181,27 @@ Shader "HeronCase/PourStream"
             float nz = sqrt(saturate(1.0 - d * d));
             half3 rgb = IN.color.rgb;
             half luma = dot(rgb, half3(0.299, 0.587, 0.114));
-            rgb = lerp(luma.xxx, rgb, _Saturation) * _Brightness;
+            rgb = saturate(lerp(luma.xxx, rgb, _Saturation) * _Brightness);
+            // the bottled liquid is always seen through the whitish glass, the falling stream is not
+            rgb = lerp(rgb, half3(1, 1, 1), _Lighten);
             rgb *= lerp(1.0 - _EdgeDarken, 1.0, nz);
 
             // glints stretched along the flow, sliding down with it
-            float streak = Noise2(float2(xn * 2.5, flowY * _StreakFreq));
+            float streak = Noise2(float2(xn * 2.5, flowCoord * _StreakFreq));
             streak = smoothstep(0.45, 0.85, streak);
 
             // squared by multiplication: pow() on a negative base is NaN in HLSL
             float s = (xn - _ShinePos) / _ShineWidth;
             float b = (xn + _ShinePos * 1.15) / (_ShineWidth * 0.7);
-            float shineMask = exp(-s * s);
-            float backMask = exp(-b * b);
-            float shine = shineMask * _ShineStrength * lerp(0.75, 1.15, streak)
-                        + backMask * _BackShineStrength
-                        + streak * _StreakStrength * nz * 0.5;
+            float shine = exp(-s * s) * _ShineStrength * lerp(0.75, 1.15, streak)
+                        + exp(-b * b) * _BackShineStrength
+                        + streak * _StreakStrength * nz * 0.5 * settle;
             rgb = lerp(rgb, _ShineColor.rgb, saturate(shine));
 
-            // soften the two quad ends so the cut never shows as a hard line
-            float ends = smoothstep(0.0, _EndFade, IN.uv.y) * smoothstep(0.0, _EndFade, 1.0 - IN.uv.y);
+            // where the head is already under the target surface it melts into the liquid
+            float headFade = lerp(1.0, saturate(toHead / max(_HeadFadeLength, 1e-3)), _Caps.z);
 
-            half alpha = body * ends * saturate(fade * 3.0);
+            half alpha = body * headFade * IN.color.a;
             return half4(rgb, alpha);
         }
         ENDHLSL

@@ -13,23 +13,39 @@ MonoBehaviour:
   m_Name: GameSettings
   m_EditorClassIdentifier: Assembly-CSharp::GameSettings
   _waterSlotHeight: 1
-  _waterYStackOffset: 0.25
   _waterRevealDuration: 0.3
-  _waterSegmentOverlap: 0.2
+  _hiddenLiquidColor: {r: 0.05660379, g: 0.05660379, b: 0.05660379, a: 1}
+  _sloshFrequency: 1.6
+  _sloshDamping: 0.12
+  _sloshAccelGain: 0.15
+  _sloshVerticalGain: 0.03
+  _sloshSpinGain: 2.5
+  _sloshSwirl: 0.1
+  _sloshMaxSlope: 0.22
+  _sloshMaxAccel: 300
+  _sloshIdle: 0.06
+  _sloshImpactKick: 1.5
   _outlineColor: {r: 1, g: 0.85, b: 0.3, a: 1}
   _outlineThickness: 0.1
   _liftAmount: 2
   _liftDuration: 0.1
   _anticipationDip: 0.2
   _anticipationDuration: 0.06
-  _pourOffsetX: 2
-  _pourAngle: 120
-  _pourDuration: 0.15
-  _pourHeightOffset: 5
-  _pourHoldDuration: 0.2
+  _pourMoveDuration: 0.4
+  _pourFlowBaseDuration: 0.2
+  _pourFlowDurationPerSlot: 0.3
+  _pourReturnDuration: 0.4
   _pourArcHeight: 1.5
-  _pourLiftAmount: 1
-  _pourLiftDuration: 0.5
+  _pourLipHeight: 1
+  _pourLipSideOffset: 0.15
+  _pourMaxAngle: 115
+  _pourSortingBoost: 100
+  _streamLipWidth: 0.5
+  _streamEndWidth: 0.36
+  _streamFallDuration: 0.13
+  _streamMouthMargin: 0.2
+  _splashMistRate: 34
+  _splashSprayRate: 40
   _shakeMagnitude: 0.08
   _shakeDuration: 0.04
   _shakeDecay1: 0.6

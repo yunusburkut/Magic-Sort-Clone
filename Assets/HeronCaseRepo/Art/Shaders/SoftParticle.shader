@@ -1,0 +1,96 @@
+Shader "HeronCase/SoftParticle"
+{
+    // Round particle with a soft edge, colored by the particle color. Used for the splash mist and droplets.
+    Properties
+    {
+        _Softness ("Edge Softness", Range(0.01,1)) = 0.6
+        _Core ("Bright Core", Range(0,1)) = 0.0
+    }
+
+    SubShader
+    {
+        Tags
+        {
+            "Queue" = "Transparent"
+            "RenderType" = "Transparent"
+            "RenderPipeline" = "UniversalPipeline"
+            "IgnoreProjector" = "True"
+            "PreviewType" = "Plane"
+        }
+
+        Blend SrcAlpha OneMinusSrcAlpha
+        Cull Off
+        ZWrite Off
+
+        HLSLINCLUDE
+        #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+
+        struct Attributes
+        {
+            float4 positionOS : POSITION;
+            float2 uv         : TEXCOORD0;
+            float4 color      : COLOR;
+            UNITY_VERTEX_INPUT_INSTANCE_ID
+        };
+
+        struct Varyings
+        {
+            float4 positionCS : SV_POSITION;
+            float2 uv         : TEXCOORD0;
+            half4  color      : COLOR;
+            UNITY_VERTEX_OUTPUT_STEREO
+        };
+
+        CBUFFER_START(UnityPerMaterial)
+            half _Softness;
+            half _Core;
+        CBUFFER_END
+
+        Varyings vert(Attributes IN)
+        {
+            Varyings OUT;
+            UNITY_SETUP_INSTANCE_ID(IN);
+            UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(OUT);
+            OUT.positionCS = TransformObjectToHClip(IN.positionOS.xyz);
+            OUT.uv = IN.uv;
+            OUT.color = IN.color;
+            return OUT;
+        }
+
+        half4 frag(Varyings IN) : SV_Target
+        {
+            UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(IN);
+
+            float r = length(IN.uv * 2.0 - 1.0);
+            float aa = max(fwidth(r), 1e-4);
+            half a = 1.0 - smoothstep(1.0 - _Softness - aa, 1.0, r);
+            half3 rgb = lerp(IN.color.rgb, half3(1, 1, 1), _Core * saturate(1.0 - r * 2.0));
+            return half4(rgb, a * IN.color.a);
+        }
+        ENDHLSL
+
+        Pass
+        {
+            Name "Universal2D"
+            Tags { "LightMode" = "Universal2D" }
+
+            HLSLPROGRAM
+            #pragma vertex vert
+            #pragma fragment frag
+            #pragma multi_compile_instancing
+            ENDHLSL
+        }
+
+        Pass
+        {
+            Name "UniversalForward"
+            Tags { "LightMode" = "UniversalForward" }
+
+            HLSLPROGRAM
+            #pragma vertex vert
+            #pragma fragment frag
+            #pragma multi_compile_instancing
+            ENDHLSL
+        }
+    }
+}
