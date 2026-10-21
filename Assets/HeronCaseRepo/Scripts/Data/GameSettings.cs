@@ -36,6 +36,9 @@ public class GameSettings : ScriptableObject
     [SerializeField] private float _pourMoveDuration = 0.14f;
     [SerializeField] private float _pourFlowBaseDuration = 0.2f;
     [SerializeField] private float _pourFlowDurationPerSlot = 0.3f;
+    [SerializeField] private float _pourFlowSlotExponent = 0.85f;
+    [SerializeField] private float _pourFlowSpeedUp = 1.35f;
+    [SerializeField] private float _pourFlowRise = 0.35f;
     [SerializeField] private float _pourReturnDuration = 0.4f;
     [SerializeField, FormerlySerializedAs("pourArcHeight")] private float _pourArcHeight = 0.8f;
     [SerializeField] private float _pourLipHeight = 1f;
@@ -130,6 +133,9 @@ public class GameSettings : ScriptableObject
     public float PourMoveDuration => _pourMoveDuration;
     public float PourFlowBaseDuration => _pourFlowBaseDuration;
     public float PourFlowDurationPerSlot => _pourFlowDurationPerSlot;
+    public float PourFlowSlotExponent => _pourFlowSlotExponent;
+    public float PourFlowSpeedUp => _pourFlowSpeedUp;
+    public float PourFlowRise => _pourFlowRise;
     public float PourReturnDuration => _pourReturnDuration;
     public float PourArcHeight => _pourArcHeight;
     public float PourLipHeight => _pourLipHeight;

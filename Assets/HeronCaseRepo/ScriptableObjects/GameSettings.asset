@@ -37,6 +37,9 @@ MonoBehaviour:
   _pourMoveDuration: 0.14
   _pourFlowBaseDuration: 0.15
   _pourFlowDurationPerSlot: 0.2
+  _pourFlowSlotExponent: 0.85
+  _pourFlowSpeedUp: 1.35
+  _pourFlowRise: 0.35
   _pourReturnDuration: 0.22
   _pourArcHeight: 1.5
   _pourLipHeight: 1

@@ -249,7 +249,7 @@ public sealed class TubeAnimController
     }
 
     // Moves the tube so its lowest lip hangs just above the target mouth, then tilts it exactly as far as the
-    // remaining liquid needs to keep reaching the lip, pivoting around that lip while the liquid flows out.
+    // remaining liquid needs to keep reaching the lip, pivoting around that lip (which slowly rises) while the liquid flows out.
     public void PlayPourInto(TubeLiquid liquid, TubeLiquid target, float amount, Vector3 restWorldPos, PourAnimCallbacks callbacks)
     {
         _selectTween?.Kill(false);
@@ -279,7 +279,8 @@ public sealed class TubeAnimController
 
         var windUp = _settings.PourWindUpDuration;
         var move = _settings.PourMoveDuration;
-        var flowDuration = _settings.PourFlowBaseDuration + _settings.PourFlowDurationPerSlot * amount;
+        // each extra slot adds a little less time, so longer pours run faster
+        var flowDuration = _settings.PourFlowBaseDuration + _settings.PourFlowDurationPerSlot * Mathf.Pow(amount, _settings.PourFlowSlotExponent);
         var crouch = _settings.SquashCrouch;
         var jump = _settings.SquashJumpStretch;
 
@@ -300,7 +301,7 @@ public sealed class TubeAnimController
         _pourSequence.Append(DOVirtual.Float(0f, 1f, windUp + move, _moveUpdate).SetEase(Ease.Linear));
         _pourSequence.Join(body);
         _pourSequence.AppendCallback(callbacks.OnTransfer);
-        _pourSequence.Append(DOVirtual.Float(0f, 1f, flowDuration, _flowUpdate).SetEase(Ease.InOutSine));
+        _pourSequence.Append(DOVirtual.Float(0f, 1f, flowDuration, _flowUpdate).SetEase(Ease.Linear));
         _pourSequence.AppendCallback(callbacks.OnFlowEnd);
         _pourSequence.Append(DOVirtual.Float(0f, 1f, _settings.PourReturnDuration, _returnUpdate).SetEase(Ease.Linear));
         _pourSequence.AppendCallback(_landAfterPour);
@@ -404,14 +405,16 @@ public sealed class TubeAnimController
         SetPose(QuadBezier(_startPos, _arcControl, _pourPos, t) + _windUpOffset * windUp, Mathf.LerpUnclamped(_startAngle + lean, _tilts[0], tilt));
     }
 
+    // Like pouring from a jug: the flow picks up speed as it goes and the tube rises slowly, drawing the stream out.
     private void UpdateFlow(float p)
     {
-        _onFlow?.Invoke(_pourAmount * p);
+        var v = EaseInOutSine(Mathf.Pow(p, _settings.PourFlowSpeedUp));
+        _onFlow?.Invoke(_pourAmount * v);
 
-        var f = p * (TiltSamples - 1);
+        var f = v * (TiltSamples - 1);
         var i = Mathf.Min(Mathf.FloorToInt(f), TiltSamples - 2);
         var angle = Mathf.Lerp(_tilts[i], _tilts[i + 1], f - i);
-        var pos = PoseFor(angle);
+        var pos = PoseFor(angle) + Vector3.up * (_settings.PourFlowRise * EaseInOutSine(p));
         SetPose(pos, angle);
 
         _flowEndPos = pos;
