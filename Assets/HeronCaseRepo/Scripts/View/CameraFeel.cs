@@ -13,9 +13,13 @@ public sealed class CameraFeel : MonoBehaviour
     [SerializeField, Range(0.1f, 1f)] private float damping = 0.7f;
     [SerializeField] private float frequency = 0.9f;
 
+    // below this the spring counts as settled; a millionth of the ortho size is far under a pixel
+    private const float RestThreshold = 1e-6f;
+
     private readonly MMSpringFloat _zoom = new MMSpringFloat();
     private Camera _camera;
     private float _baseSize;
+    private bool _moving;
 
     private void Awake()
     {
@@ -38,12 +42,23 @@ public sealed class CameraFeel : MonoBehaviour
         EventBus<LevelCompletedEvent>.Unsubscribe(OnLevelCompleted);
         _zoom.MoveToInstant(0f);
         _camera.orthographicSize = _baseSize;
+        _moving = false;
     }
 
     private void Update()
     {
+        // the spring rests between punches, and the camera is left alone until the next one
+        if (!_moving) return;
+
         _zoom.UpdateSpringValue(Time.deltaTime);
         _camera.orthographicSize = _baseSize * (1f - Mathf.Max(0f, _zoom.CurrentValue));
+
+        if (Mathf.Abs(_zoom.CurrentValue) < RestThreshold && Mathf.Abs(_zoom.Velocity) < RestThreshold)
+        {
+            _zoom.MoveToInstant(0f);
+            _camera.orthographicSize = _baseSize;
+            _moving = false;
+        }
     }
 
     private void OnTubeSolved(TubeSolvedEvent e) => Punch(solvedZoom);
@@ -54,5 +69,6 @@ public sealed class CameraFeel : MonoBehaviour
     private void Punch(float zoom)
     {
         _zoom.Bump(zoom * 2f * Mathf.PI * frequency / 0.46f);
+        _moving = true;
     }
 }

@@ -46,6 +46,7 @@ public sealed class PourStreamView : MonoBehaviour
     private Vector3 _targetPos;
     private float _targetLevel;
 
+    private Vector4 _caps;
     private bool _active;
     private bool _ending;
     private float _headTime;
@@ -145,8 +146,14 @@ public sealed class PourStreamView : MonoBehaviour
 
     private void LateUpdate()
     {
+        if (_target == null) return;
         FollowTarget();
-        if (!_active) return;
+        if (!_active)
+        {
+            // once the splash has settled there is nothing left to carry along until the next pour
+            if (_foam.particleCount == 0 && _spray.particleCount == 0) _target = null;
+            return;
+        }
 
         var dt = Time.deltaTime;
         var fall = Mathf.Max(0.01f, _settings.StreamFallDuration);
@@ -174,9 +181,14 @@ public sealed class PourStreamView : MonoBehaviour
             Emit(_spray, ref _sprayDebt, _settings.SplashSprayRate * _strength * dt, new Vector2(8f, 22f), new Vector2(1.4f, 1.8f), new Vector2(0.18f, 0.26f), true);
         }
 
-        _renderer.GetPropertyBlock(_mpb);
-        _mpb.SetVector(CapsId, new Vector4(_tailTime > 0f ? 1f : 0f, _headTime < 1f ? 1f : 0f, _headTime >= 1f ? 1f : 0f, 0f));
-        _renderer.SetPropertyBlock(_mpb);
+        // the block only holds the caps, which change a few times per pour
+        var caps = new Vector4(_tailTime > 0f ? 1f : 0f, _headTime < 1f ? 1f : 0f, _headTime >= 1f ? 1f : 0f, 0f);
+        if (!caps.Equals(_caps))
+        {
+            _caps = caps;
+            _mpb.SetVector(CapsId, caps);
+            _renderer.SetPropertyBlock(_mpb);
+        }
 
         if (_tailTime >= 1f)
         {
@@ -190,8 +202,6 @@ public sealed class PourStreamView : MonoBehaviour
     // up with the filling surface, which rises much faster than the drops fall, so it is not swallowed by the liquid.
     private void FollowTarget()
     {
-        if (_target == null) return;
-
         var pos = _target.transform.position;
         var delta = pos - _targetPos;
         _targetPos = pos;
@@ -431,7 +441,9 @@ public sealed class PourStreamView : MonoBehaviour
 
         var main = ps.main;
         main.playOnAwake = false;
-        main.loop = true;
+        // not looping, so it stops by itself once its last particle is gone instead of being updated empty for the
+        // rest of the level; Emit plays it again
+        main.loop = false;
         main.duration = 1f;
         main.simulationSpace = ParticleSystemSimulationSpace.World;
         // sizes and speeds already carry the tube scale, see Emit

@@ -29,6 +29,10 @@ public sealed class TubeLiquid : MonoBehaviour
     private readonly Vector4[] _colors = new Vector4[MaxLayers];
     private readonly Vector4[] _bounds = new Vector4[MaxLayers];
     private readonly Vector2[] _poly = new Vector2[LiquidShape.VertexCount];
+    // a boundary only moves when the tube turns or the liquid under it changes, so each is kept with the frame and
+    // area it was found for and reused until then
+    private readonly float[] _boundArea = new float[MaxLayers];
+    private Vector2 _boundUp;
 
     // how far below the neck the liquid under the poured one is kept while pouring
     private const float NeckClearance = 0.1f;
@@ -91,10 +95,15 @@ public sealed class TubeLiquid : MonoBehaviour
         _renderer = GetComponent<MeshRenderer>();
         _renderer.sharedMaterial = material;
         _renderer.sortingOrder = sortingOrder;
+        // the block belongs to this renderer alone, so it is filled in place every frame and never read back;
+        // the shape is set once here and stays in it
         _mpb = new MaterialPropertyBlock();
+        _mpb.SetVector(ShapeId, new Vector4(_shape.BodyHalfWidth, _shape.NeckHalfWidth, _shape.BottomY, _shape.LipY));
+        _mpb.SetVector(Shape2Id, new Vector4(_shape.ShoulderY, _shape.NeckY, _shape.EllipseRatio, _shape.BottomCurveHeight));
+        ForgetBounds();
 
         BuildMesh();
-        Push();
+        Push(Angle);
     }
 
     private void OnDestroy()
@@ -261,8 +270,9 @@ public sealed class TubeLiquid : MonoBehaviour
         var dt = Time.deltaTime;
         if (dt <= 0f || _settings == null) return;
 
+        var angle = Angle;
         UpdateReveal(dt);
-        UpdateSlosh(dt);
+        UpdateSlosh(dt, angle);
 
         // the splash fades fast, the bubbles it stirred up linger
         _impactStrength = Mathf.MoveTowards(_impactStrength, _impactTarget, dt / 0.1f);
@@ -275,7 +285,7 @@ public sealed class TubeLiquid : MonoBehaviour
         }
         _impactTarget = 0f;
 
-        Push();
+        Push(angle);
     }
 
     private void UpdateReveal(float dt)
@@ -290,10 +300,9 @@ public sealed class TubeLiquid : MonoBehaviour
 
     // Two damped springs. Sideways acceleration and spin tip the surface left/right; the front/back tilt is driven
     // by that slope and lags it by a quarter period, so the surface swirls around the bottle instead of only rocking.
-    private void UpdateSlosh(float dt)
+    private void UpdateSlosh(float dt, float angle)
     {
         var pos = transform.position;
-        var angle = Angle;
         if (!_hasLast)
         {
             _lastPos = pos;
@@ -338,11 +347,16 @@ public sealed class TubeLiquid : MonoBehaviour
         }
     }
 
-    private void Push()
+    private void Push(float angle)
     {
         var count = Mathf.Min(_layers.Count, MaxLayers);
-        var up = LiquidMath.LocalUp(Angle);
+        var up = LiquidMath.LocalUp(angle);
         var right = LiquidMath.LocalRight(up);
+        if (up.x != _boundUp.x || up.y != _boundUp.y)
+        {
+            _boundUp = up;
+            ForgetBounds();
+        }
         var t = Time.time + _phaseSeed;
 
         // a gentle idle sway on top of the springs keeps the liquid alive at rest
@@ -355,13 +369,16 @@ public sealed class TubeLiquid : MonoBehaviour
         {
             var l = _layers[i];
             area += l.Volume * _slotArea;
-            var h = LiquidMath.HeightForArea(_poly, up, area);
-            LiquidMath.Chord(_poly, up, h, out var wMin, out var wMax);
-            var mid = (wMin + wMax) * 0.5f;
-            var half = Mathf.Max(0.001f, (wMax - wMin) * 0.5f);
-            var midLocal = up * h + right * mid;
-
-            _bounds[i] = new Vector4(h, mid, half, _shape.EllipseAt(midLocal.y));
+            if (area != _boundArea[i])
+            {
+                _boundArea[i] = area;
+                var h = LiquidMath.HeightForArea(_poly, up, area);
+                LiquidMath.Chord(_poly, up, h, out var wMin, out var wMax);
+                var mid = (wMin + wMax) * 0.5f;
+                var half = Mathf.Max(0.001f, (wMax - wMin) * 0.5f);
+                var midLocal = up * h + right * mid;
+                _bounds[i] = new Vector4(h, mid, half, _shape.EllipseAt(midLocal.y));
+            }
             // vectors skip Unity's gamma-to-linear conversion, so the palette colors are converted here
             var col = Color.Lerp(_hiddenColor, l.Color, l.Reveal).linear;
             _colors[i] = new Vector4(col.r, col.g, col.b, 1f);
@@ -370,15 +387,18 @@ public sealed class TubeLiquid : MonoBehaviour
 
         var energy = 0.2f + Mathf.Clamp01(Mathf.Abs(_sloshXVel) * 0.5f + Mathf.Abs(_sloshZVel) * 0.12f + _impactStrength);
 
-        _renderer.GetPropertyBlock(_mpb);
         _mpb.SetVectorArray(LayerColorsId, _colors);
         _mpb.SetVectorArray(LayerBoundsId, _bounds);
         _mpb.SetFloat(LayerCountId, count);
         _mpb.SetVector(FrameId, new Vector4(up.x, up.y, slope, tilt));
-        _mpb.SetVector(ShapeId, new Vector4(_shape.BodyHalfWidth, _shape.NeckHalfWidth, _shape.BottomY, _shape.LipY));
-        _mpb.SetVector(Shape2Id, new Vector4(_shape.ShoulderY, _shape.NeckY, _shape.EllipseRatio, _shape.BottomCurveHeight));
         _mpb.SetVector(ImpactId, new Vector4(_impactW, _impactStrength, energy, _bubbles));
         _renderer.SetPropertyBlock(_mpb);
+    }
+
+    // NaN matches no area, so every boundary is worked out again the next time it is used
+    private void ForgetBounds()
+    {
+        for (var i = 0; i < MaxLayers; i++) _boundArea[i] = float.NaN;
     }
 
     // The slosh tips every boundary, and tipped to pour that can lift the liquid under the top one into the neck;

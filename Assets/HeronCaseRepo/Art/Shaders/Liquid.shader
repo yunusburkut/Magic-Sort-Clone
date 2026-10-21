@@ -271,19 +271,26 @@ Shader "HeronCase/Liquid"
             side = lerp(side, half3(1, 1, 1), saturate(lineGlow) * _LayerLine);
 
             // ---- under the stream: a plunging, lighter column and rising bubbles, tinted with the poured (top) color
+            // the churn, the bubbles and the foam all scale with the splash or the bubbles it left, so a still tube
+            // skips them; the branch is the same for the whole draw
+            bool stirred = impS > 0.0 || bubbleE > 0.0;
             half3 splash = lerp(topCol, half3(1, 1, 1), _SplashWhite);
-            float depth = surfTop - h;
-            float colMask = exp(-(dImp * dImp) / (_ChurnWidth * _ChurnWidth));
-            float churnN = Noise2(float2(dImp * 9.0, h * 5.0 + t * 7.0));
-            float churn = colMask * saturate(1.0 - depth / 1.1) * impS * smoothstep(0.3, 0.8, churnN);
-            side = lerp(side, splash, saturate(churn) * _ChurnStrength);
+            [branch]
+            if (stirred)
+            {
+                float depth = surfTop - h;
+                float colMask = exp(-(dImp * dImp) / (_ChurnWidth * _ChurnWidth));
+                float churnN = Noise2(float2(dImp * 9.0, h * 5.0 + t * 7.0));
+                float churn = colMask * saturate(1.0 - depth / 1.1) * impS * smoothstep(0.3, 0.8, churnN);
+                side = lerp(side, splash, saturate(churn) * _ChurnStrength);
 
-            float2 bp = float2(w, h - t * _BubbleRise);
-            float bubbles = Bubbles(bp, _BubbleSize, 0.0, px);
-            bubbles = max(bubbles, Bubbles(float2(w, h - t * _BubbleRise * 1.35) + 3.7, _BubbleSize * 0.62, 11.0, px) * 0.8);
-            float spread = exp(-(dImp * dImp) / (_BubbleSpread * _BubbleSpread));
-            float zone = smoothstep(_BubbleDepth, _BubbleDepth * 0.35, depth) * smoothstep(-0.01, 0.05, depth);
-            side = lerp(side, splash, saturate(bubbles * spread * zone * bubbleE) * 0.85);
+                float2 bp = float2(w, h - t * _BubbleRise);
+                float bubbles = Bubbles(bp, _BubbleSize, 0.0, px);
+                bubbles = max(bubbles, Bubbles(float2(w, h - t * _BubbleRise * 1.35) + 3.7, _BubbleSize * 0.62, 11.0, px) * 0.8);
+                float spread = exp(-(dImp * dImp) / (_BubbleSpread * _BubbleSpread));
+                float zone = smoothstep(_BubbleDepth, _BubbleDepth * 0.35, depth) * smoothstep(-0.01, 0.05, depth);
+                side = lerp(side, splash, saturate(bubbles * spread * zone * bubbleE) * 0.85);
+            }
 
             // ---- top surface seen from above
             float faceV = (h - surfTop) / halfFace;
@@ -292,10 +299,14 @@ Shader "HeronCase/Liquid"
             float rimD = (h - frontTop) / _RimWidth;
             face = lerp(face, half3(1, 1, 1), exp(-rimD * rimD) * _RimStrength);
 
-            float foamMask = exp(-(dImp * dImp) / (_FoamWidth * _FoamWidth)) * saturate(impS + bubbleE * 0.35);
-            float fn = Noise2(float2(w * 16.0, h * 26.0 + t * 1.5)) * 0.6 + Noise2(float2(w * 31.0 - t, h * 47.0)) * 0.4;
-            float foam = saturate(smoothstep(0.35, 0.62, fn) * foamMask * 1.5);
-            face = lerp(face, splash, foam * _FoamStrength);
+            [branch]
+            if (stirred)
+            {
+                float foamMask = exp(-(dImp * dImp) / (_FoamWidth * _FoamWidth)) * saturate(impS + bubbleE * 0.35);
+                float fn = Noise2(float2(w * 16.0, h * 26.0 + t * 1.5)) * 0.6 + Noise2(float2(w * 31.0 - t, h * 47.0)) * 0.4;
+                float foam = saturate(smoothstep(0.35, 0.62, fn) * foamMask * 1.5);
+                face = lerp(face, splash, foam * _FoamStrength);
+            }
 
             float kFace = saturate((h - frontTop) / px + 0.5);
             float kAbove = saturate((h - backTop) / px + 0.5);

@@ -158,12 +158,17 @@ Shader "HeronCase/TubeGlass"
             // only catch a little of it. It is added light, so it brightens without hiding the liquid.
             // the clear body is only ~4% opaque, so the inside of the bottle needs its own, lower threshold
             float inside = smoothstep(0.004, 0.03, tex.a);
-            float pulse = 1.0 - _GlowPulse * (0.5 + 0.5 * sin(_Time.y * _GlowSpeed));
-            float above = IN.local.y - _GlowLine;
-            float empty = smoothstep(-0.02, 0.08, above);
-            float fade = lerp(0.5, 1.0, exp(-max(above, 0.0) / _GlowFade));
-            float glow = _Glow * pulse * (rim * lerp(_GlowRimLow, _GlowRim * fade, empty) + inside * empty * fade * _GlowFill);
-            rgb += _GlowColor.rgb * glow;
+            // only the selected tube glows; the branch is the same for the whole draw
+            [branch]
+            if (_Glow != 0.0)
+            {
+                float pulse = 1.0 - _GlowPulse * (0.5 + 0.5 * sin(_Time.y * _GlowSpeed));
+                float above = IN.local.y - _GlowLine;
+                float empty = smoothstep(-0.02, 0.08, above);
+                float fade = lerp(0.5, 1.0, exp(-max(above, 0.0) / _GlowFade));
+                float glow = _Glow * pulse * (rim * lerp(_GlowRimLow, _GlowRim * fade, empty) + inside * empty * fade * _GlowFill);
+                rgb += _GlowColor.rgb * glow;
+            }
 
             // solved: the whole bottle flashes when the cork snaps in, then one bright band of shine runs up over
             // it, liquid and all, at the top of the hop

@@ -108,11 +108,11 @@ public sealed class TubeSparksView : MonoBehaviour
     // stars keep popping up around the bottle for a moment, at random spots, sizes and spins
     private IEnumerator PopStars(Vector3 center, Vector3 extents, float unit)
     {
-        Wake(_stars);
         var star = new ParticleSystem.EmitParams();
         var count = Random.Range(4, 7);
         for (var i = 0; i < count; i++)
         {
+            Wake(_stars);
             star.position = center + new Vector3(Random.Range(-1.5f, 1.5f) * extents.x, Random.Range(-0.7f, 1.2f) * extents.y, 0f);
             star.velocity = new Vector3(0f, Random.Range(0.1f, 0.7f) * unit, 0f);
             star.rotation = Random.Range(0f, 90f);
@@ -121,7 +121,9 @@ public sealed class TubeSparksView : MonoBehaviour
             star.startLifetime = Random.Range(0.3f, 0.6f);
             star.startColor = Spark;
             _stars.Emit(star, 1);
-            if (i >= 2) yield return new WaitForSeconds(Random.Range(0.02f, 0.09f));
+            if (i < 2) continue;
+            // counted down by hand, as a new WaitForSeconds per star would be garbage
+            for (var wait = Random.Range(0.02f, 0.09f); wait > 0f; wait -= Time.deltaTime) yield return null;
         }
     }
 
@@ -194,7 +196,9 @@ public sealed class TubeSparksView : MonoBehaviour
 
         var main = ps.main;
         main.playOnAwake = false;
-        main.loop = true;
+        // not looping, so it stops by itself once its last particle is gone instead of being updated empty for the
+        // rest of the level; Wake plays it again
+        main.loop = false;
         main.duration = 1f;
         main.simulationSpace = ParticleSystemSimulationSpace.World;
         // sizes and speeds already carry the tube scale, see Burst
