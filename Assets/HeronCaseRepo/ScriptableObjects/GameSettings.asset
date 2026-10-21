@@ -25,8 +25,6 @@ MonoBehaviour:
   _sloshMaxAccel: 300
   _sloshIdle: 0.06
   _sloshImpactKick: 1.5
-  _outlineColor: {r: 1, g: 0.85, b: 0.3, a: 1}
-  _outlineThickness: 0.1
   _liftAmount: 2
   _liftDuration: 0.14
   _anticipationDip: 0.08

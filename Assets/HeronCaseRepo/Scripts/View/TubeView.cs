@@ -4,11 +4,13 @@ using UnityEngine.EventSystems;
 
 public class TubeView : MonoBehaviour, IPointerClickHandler
 {
+    private static readonly int GlowId = Shader.PropertyToID("_Glow");
+    private static readonly int GlowLineId = Shader.PropertyToID("_GlowLine");
+
     [Header("References")]
-    // squash & stretch target holding the glass, outline, cloak and liquid; the root only moves and tilts
+    // squash & stretch target holding the glass, cloak and liquid; the root only moves and tilts
     [SerializeField] private Transform body;
     [SerializeField] private SpriteRenderer tubeRenderer;
-    [SerializeField] private SpriteRenderer outlineRenderer;
     [SerializeField] private BoxCollider2D tubeCollider;
 
     [Header("Liquid")]
@@ -49,6 +51,7 @@ public class TubeView : MonoBehaviour, IPointerClickHandler
     private PourStreamView _stream;
     private TubeSparksView _sparks;
     private SpriteRenderer _cap;
+    private MaterialPropertyBlock _glassBlock;
     private bool _isSelected;
     private Vector3 _restLocalPos;
 
@@ -88,7 +91,8 @@ public class TubeView : MonoBehaviour, IPointerClickHandler
     {
         _mainCamera = Camera.main;
         _scope = new TweenScope();
-        _anim = new TubeAnimController(transform, body, outlineRenderer, settings, _scope);
+        _glassBlock = new MaterialPropertyBlock();
+        _anim = new TubeAnimController(transform, body, SetGlassGlow, settings, _scope);
         _cachedTransferWater = DoTransferWater;
         _cachedPourFlow = OnPourFlow;
         _cachedPourFlowEnd = OnPourFlowEnd;
@@ -106,8 +110,6 @@ public class TubeView : MonoBehaviour, IPointerClickHandler
         _cap.sharedMaterial = capMaterial;
         _cap.sortingOrder = capSortingOrder;
         _cap.gameObject.SetActive(false);
-
-        outlineRenderer.color = Color.clear;
     }
 
     private void OnDestroy()
@@ -260,6 +262,15 @@ public class TubeView : MonoBehaviour, IPointerClickHandler
         if (selected) HapticService.PlaySelect();
     }
 
+    // The selected tube's glass lights up, brightest where the liquid ends (TubeGlass.shader).
+    private void SetGlassGlow(float glow)
+    {
+        tubeRenderer.GetPropertyBlock(_glassBlock);
+        _glassBlock.SetFloat(GlowId, glow);
+        _glassBlock.SetFloat(GlowLineId, _liquid.SurfaceLocalY);
+        tubeRenderer.SetPropertyBlock(_glassBlock);
+    }
+
     public void Shake()
     {
         float snapY;
@@ -340,9 +351,6 @@ public class TubeView : MonoBehaviour, IPointerClickHandler
         tubeCollider.offset = new Vector2(tubeCollider.offset.x, tubeCollider.offset.y + extraHeight * 0.5f);
 
         transform.localPosition -= new Vector3(0f, extraHeight * 0.5f, 0f);
-
-        var t = settings.OutlineThickness;
-        outlineRenderer.size = new Vector2(tubeRenderer.size.x + t * 2f, tubeRenderer.size.y + t * 2f);
 
         return extraHeight;
     }

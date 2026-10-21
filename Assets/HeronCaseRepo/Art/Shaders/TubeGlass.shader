@@ -18,6 +18,18 @@ Shader "HeronCase/TubeGlass"
         _SweepPeriod ("Sweep Period (s)", Float) = 3.5
         _SweepDuration ("Sweep Travel Time (s)", Float) = 3.5
         _SweepStagger ("Stagger Per World Unit", Float) = 0.06
+
+        [Header(Select Glow)]
+        _GlowColor ("Glow Color", Color) = (1,0.96,0.85,1)
+        _GlowRim ("Rim Glow Above Liquid", Range(0,4)) = 1.1
+        _GlowRimLow ("Rim Glow Along Liquid", Range(0,4)) = 0.12
+        _GlowFill ("Empty Glass Glow", Range(0,2)) = 0.5
+        _GlowFade ("Fade Above Liquid", Range(0.01,2)) = 0.35
+        _GlowPulse ("Pulse Amount", Range(0,1)) = 0.2
+        _GlowSpeed ("Pulse Speed", Float) = 5
+        // driven per tube from code: how far the glow is in, and the tube-local height of the liquid surface
+        [PerRendererData] _Glow ("Glow", Range(0,1)) = 0
+        [PerRendererData] _GlowLine ("Liquid Line", Float) = -10
     }
 
     SubShader
@@ -73,6 +85,15 @@ Shader "HeronCase/TubeGlass"
             float  _SweepPeriod;
             float  _SweepDuration;
             float  _SweepStagger;
+            half4  _GlowColor;
+            half   _GlowRim;
+            half   _GlowRimLow;
+            half   _GlowFill;
+            float  _GlowFade;
+            half   _GlowPulse;
+            float  _GlowSpeed;
+            half   _Glow;
+            float  _GlowLine;
         CBUFFER_END
 
         Varyings vert(Attributes IN)
@@ -113,6 +134,18 @@ Shader "HeronCase/TubeGlass"
             float sweep = (1.0 - smoothstep(0.0, _SweepWidth, abs(s - center))) * glass * _SweepStrength;
             rgb = lerp(rgb, _SweepColor.rgb, sweep);
             a = lerp(a, 1.0, sweep);
+
+            // select glow: the empty glass above the liquid lights up, brightest where the liquid ends and fading
+            // toward the mouth, so it reads as the bottle glowing rather than an outline. The walls along the liquid
+            // only catch a little of it. It is added light, so it brightens without hiding the liquid.
+            // the clear body is only ~4% opaque, so the inside of the bottle needs its own, lower threshold
+            float inside = smoothstep(0.004, 0.03, tex.a);
+            float pulse = 1.0 - _GlowPulse * (0.5 + 0.5 * sin(_Time.y * _GlowSpeed));
+            float above = IN.local.y - _GlowLine;
+            float empty = smoothstep(-0.02, 0.08, above);
+            float fade = lerp(0.5, 1.0, exp(-max(above, 0.0) / _GlowFade));
+            float glow = _Glow * pulse * (rim * lerp(_GlowRimLow, _GlowRim * fade, empty) + inside * empty * fade * _GlowFill);
+            rgb += _GlowColor.rgb * glow;
 
             return half4(rgb * IN.color.rgb, a) * IN.color.a;
         }

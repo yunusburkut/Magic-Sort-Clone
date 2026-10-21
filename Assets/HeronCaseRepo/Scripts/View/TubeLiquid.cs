@@ -71,6 +71,9 @@ public sealed class TubeLiquid : MonoBehaviour
 
     public Vector3 MouthWorld => transform.TransformPoint(new Vector3(0f, _shape.LipY, 0f));
 
+    // Tube-local height of the top surface while the tube stands upright.
+    public float SurfaceLocalY => LiquidMath.HeightForArea(_poly, Vector2.up, TotalVolume * _slotArea);
+
     public void Setup(LiquidShape shape, GameSettings settings, Material material, int sortingOrder)
     {
         _shape = shape;

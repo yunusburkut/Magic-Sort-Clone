@@ -12,10 +12,13 @@ public sealed class TubeAnimController
     private const float CapHang = 0.6f;
     // the cork pops in tipped over and rights itself on the way down
     private const float CapTilt = 16f;
+    private const float GlowInDuration = 0.15f;
+    private const float GlowOutDuration = 0.25f;
 
     private readonly Transform _transform;
     private readonly Transform _body;
-    private readonly SpriteRenderer _outline;
+    private readonly TweenCallback<float> _applyGlow;
+    private readonly TweenCallback<float> _setGlow;
     private readonly GameSettings _settings;
     private readonly TweenScope _scope;
 
@@ -23,7 +26,7 @@ public sealed class TubeAnimController
     private Tween _selectTween;
     private Tween _shakeTween;
     private Tween _solvedTween;
-    private Tween _outlineTween;
+    private Tween _glowTween;
     private Tween _enterTween;
     private Tween _bodyTween;
     private Tween _leanTween;
@@ -34,6 +37,8 @@ public sealed class TubeAnimController
     // The body keeps its area (width = 1 / stretch) and pivots on the bottle base, which stays planted.
     private float _stretch = 1f;
     private float _lean;
+    // how far the selected glass glow is in, 0..1
+    private float _glow;
     private float _bottomY;
     private readonly TweenCallback<float> _setStretch;
     private readonly TweenCallback<float> _setLean;
@@ -76,11 +81,13 @@ public sealed class TubeAnimController
 
     public int PourTiltSign { get; private set; }
 
-    public TubeAnimController(Transform transform, Transform body, SpriteRenderer outline, GameSettings settings, TweenScope scope)
+    // applyGlow lights the glass up for the selection, 0 off to 1 fully on
+    public TubeAnimController(Transform transform, Transform body, TweenCallback<float> applyGlow, GameSettings settings, TweenScope scope)
     {
         _transform = transform;
         _body = body;
-        _outline = outline;
+        _applyGlow = applyGlow;
+        _setGlow = SetGlow;
         _settings = settings;
         _scope = scope;
         _moveUpdate = UpdateMove;
@@ -124,10 +131,11 @@ public sealed class TubeAnimController
     public void PlaySelect(bool selected)
     {
         _selectTween?.Kill(false);
-        _outlineTween?.Kill(false);
+        _glowTween?.Kill(false);
         _bodyTween?.Kill(false);
 
-        _outlineTween = _scope.Add(_outline.DOColor(selected ? _settings.OutlineColor : Color.clear, 0.1f));
+        _glowTween = _scope.Add(DOVirtual.Float(_glow, selected ? 1f : 0f, selected ? GlowInDuration : GlowOutDuration, _setGlow)
+            .SetEase(Ease.OutSine));
 
         var y = _restLocalPos.y;
         var dip = _settings.AnticipationDuration;
@@ -426,6 +434,12 @@ public sealed class TubeAnimController
     private Tween LeanTo(float from, float to, float duration, EaseFunction ease)
     {
         return DOVirtual.Float(from, to, duration, _setLean).SetEase(ease);
+    }
+
+    private void SetGlow(float glow)
+    {
+        _glow = glow;
+        _applyGlow(glow);
     }
 
     private void SetStretch(float stretch)

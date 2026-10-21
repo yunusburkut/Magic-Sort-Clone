@@ -22,8 +22,6 @@ public class GameSettings : ScriptableObject
     [SerializeField] private float _sloshImpactKick = 1.5f;
 
     [Header("Tube Selection")]
-    [SerializeField, FormerlySerializedAs("outlineColor")] private Color _outlineColor = new Color(1f, 0.85f, 0.3f, 1f);
-    [SerializeField, FormerlySerializedAs("outlineThickness")] private float _outlineThickness = 0.1f;
     [SerializeField, FormerlySerializedAs("liftAmount")] private float _liftAmount = 0.3f;
     [SerializeField, FormerlySerializedAs("liftDuration")] private float _liftDuration = 0.2f;
     [SerializeField, FormerlySerializedAs("anticipationDip")] private float _anticipationDip = 0.15f;
@@ -130,8 +128,6 @@ public class GameSettings : ScriptableObject
     public float SloshMaxAccel => _sloshMaxAccel;
     public float SloshIdle => _sloshIdle;
     public float SloshImpactKick => _sloshImpactKick;
-    public Color OutlineColor => _outlineColor;
-    public float OutlineThickness => _outlineThickness;
     public float LiftAmount => _liftAmount;
     public float LiftDuration => _liftDuration;
     public float AnticipationDip => _anticipationDip;
