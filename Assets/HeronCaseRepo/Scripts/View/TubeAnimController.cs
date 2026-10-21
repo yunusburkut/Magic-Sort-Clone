@@ -142,7 +142,9 @@ public sealed class TubeAnimController
     public void ShowLine(Color color)
     {
         _lineTween?.Kill(false);
-        _line.color = new Color(color.r, color.g, color.b, 1f);
+        // PourStream shader ties width to alpha, so fading in grows the stream from a trickle.
+        _line.color = new Color(color.r, color.g, color.b, 0f);
+        _lineTween = _scope.Add(_line.DOFade(1f, _settings.PourStreamInDuration).SetEase(Ease.OutQuad));
     }
 
     public void HideLine()

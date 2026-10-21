@@ -27,6 +27,7 @@ public class GameSettings : ScriptableObject
     [SerializeField, FormerlySerializedAs("pourArcHeight")] private float _pourArcHeight = 0.8f;
     [SerializeField] private float _pourLiftAmount = 0.3f;
     [SerializeField] private float _pourLiftDuration = 0.12f;
+    [SerializeField] private float _pourStreamInDuration = 0.08f;
 
     [Header("Shake Animation")]
     [SerializeField, FormerlySerializedAs("shakeMagnitude")] private float _shakeMagnitude = 0.08f;
@@ -78,6 +79,7 @@ public class GameSettings : ScriptableObject
     public float PourArcHeight => _pourArcHeight;
     public float PourLiftAmount => _pourLiftAmount;
     public float PourLiftDuration => _pourLiftDuration;
+    public float PourStreamInDuration => _pourStreamInDuration;
     public float ShakeMagnitude => _shakeMagnitude;
     public float ShakeDuration => _shakeDuration;
     public float ShakeDecay1 => _shakeDecay1;

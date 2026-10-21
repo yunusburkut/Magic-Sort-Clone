@@ -79,7 +79,6 @@ Shader "HeronCase/WaterReveal"
         SAMPLER(sampler_MainTex);
 
         CBUFFER_START(UnityPerMaterial)
-            float4 _MainTex_ST;
             half4  _Color;
             float  _RevealAmount;
             float  _ConcaveDepth;
@@ -131,7 +130,7 @@ Shader "HeronCase/WaterReveal"
             UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(OUT);
             OUT.positionCS = TransformObjectToHClip(IN.positionOS.xyz);
             OUT.positionWS = TransformObjectToWorld(IN.positionOS.xyz).xy;
-            OUT.uv         = TRANSFORM_TEX(IN.uv, _MainTex);
+            OUT.uv         = IN.uv;
             OUT.color      = IN.color * _Color;
             return OUT;
         }
