@@ -30,6 +30,9 @@ public sealed class TubeLiquid : MonoBehaviour
     private readonly Vector4[] _bounds = new Vector4[MaxLayers];
     private readonly Vector2[] _poly = new Vector2[LiquidShape.VertexCount];
 
+    // how far below the neck the liquid under the poured one is kept while pouring
+    private const float NeckClearance = 0.1f;
+
     private GameSettings _settings;
     private LiquidShape _shape;
     private Color _hiddenColor;
@@ -69,7 +72,9 @@ public sealed class TubeLiquid : MonoBehaviour
         }
     }
 
-    public Vector3 MouthWorld => transform.TransformPoint(new Vector3(0f, _shape.LipY, 0f));
+    public float TopVolume => _layers.Count > 0 ? _layers[_layers.Count - 1].Volume : 0f;
+
+    public Vector3 MouthWorld =>transform.TransformPoint(new Vector3(0f, _shape.LipY, 0f));
 
     // Tube-local height of the top surface while the tube stands upright.
     public float SurfaceLocalY => LiquidMath.HeightForArea(_poly, Vector2.up, TotalVolume * _slotArea);
@@ -194,6 +199,33 @@ public sealed class TubeLiquid : MonoBehaviour
     public float LipAngle(float volume, int tiltSign)
     {
         return LiquidMath.LipAngle(_poly, _shape, volume * _slotArea, tiltSign, _settings.PourMaxAngle);
+    }
+
+    // Tilt for pouring with `volume` slots left, `below` of them under the poured liquid: the lip angle, held back
+    // where a thin poured layer would let the neck dip into the liquid underneath, so only the poured color is ever
+    // at the mouth and every layer keeps its own thickness.
+    public float PourAngle(float volume, float below, int tiltSign)
+    {
+        var angle = LipAngle(volume, tiltSign);
+        if (below <= 1e-3f || NeckClear(angle, below)) return angle;
+
+        var lo = 0f;
+        var hi = angle;
+        for (var i = 0; i < 20; i++)
+        {
+            var mid = (lo + hi) * 0.5f;
+            if (NeckClear(mid, below)) lo = mid;
+            else hi = mid;
+        }
+        return lo;
+    }
+
+    private bool NeckClear(float angle, float below)
+    {
+        var up = LiquidMath.LocalUp(angle);
+        var neck = float.MaxValue;
+        for (var c = 0; c < 4; c++) neck = Mathf.Min(neck, Vector2.Dot(NeckCorner(c), up));
+        return LiquidMath.HeightForArea(_poly, up, below * _slotArea) <= neck - NeckClearance;
     }
 
     public Vector3 LipLocal(int tiltSign) => _shape.Lip(tiltSign);
@@ -334,6 +366,7 @@ public sealed class TubeLiquid : MonoBehaviour
             var col = Color.Lerp(_hiddenColor, l.Color, l.Reveal).linear;
             _colors[i] = new Vector4(col.r, col.g, col.b, 1f);
         }
+        if (count >= 2) slope = NeckSlope(_bounds[count - 2], up, right, slope);
 
         var energy = 0.2f + Mathf.Clamp01(Mathf.Abs(_sloshXVel) * 0.5f + Mathf.Abs(_sloshZVel) * 0.12f + _impactStrength);
 
@@ -346,5 +379,26 @@ public sealed class TubeLiquid : MonoBehaviour
         _mpb.SetVector(Shape2Id, new Vector4(_shape.ShoulderY, _shape.NeckY, _shape.EllipseRatio, _shape.BottomCurveHeight));
         _mpb.SetVector(ImpactId, new Vector4(_impactW, _impactStrength, energy, _bubbles));
         _renderer.SetPropertyBlock(_mpb);
+    }
+
+    // The slosh tips every boundary, and tipped to pour that can lift the liquid under the top one into the neck;
+    // the slope is cut back there so the top liquid alone stays at the mouth.
+    private float NeckSlope(Vector4 below, Vector2 up, Vector2 right, float slope)
+    {
+        for (var c = 0; c < 4; c++)
+        {
+            var corner = NeckCorner(c);
+            var room = Vector2.Dot(corner, up) - NeckClearance * 0.25f - below.x;
+            if (room <= 0f) continue;
+            var dw = Vector2.Dot(corner, right) - below.y;
+            if (dw > 1e-4f) slope = Mathf.Min(slope, room / dw);
+            else if (dw < -1e-4f) slope = Mathf.Max(slope, room / dw);
+        }
+        return slope;
+    }
+
+    private Vector2 NeckCorner(int c)
+    {
+        return new Vector2((c & 1) == 0 ? -_shape.NeckHalfWidth : _shape.NeckHalfWidth, c < 2 ? _shape.NeckY : _shape.LipY);
     }
 }

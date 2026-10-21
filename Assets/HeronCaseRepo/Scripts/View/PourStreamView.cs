@@ -10,7 +10,7 @@ public sealed class PourStreamView : MonoBehaviour
     private const int Segments = 28;
     private const int SplashOrderOffset = 5;
     // share of the pour over which the stream swells to full, and from which it thins out again
-    private const float SwellUntil = 0.15f;
+    private const float SwellUntil = 0.3f;
     private const float ThinFrom = 0.75f;
 
     private static readonly int CapsId = Shader.PropertyToID("_Caps");

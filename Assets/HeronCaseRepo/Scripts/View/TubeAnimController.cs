@@ -6,8 +6,8 @@ public sealed class TubeAnimController
     private const int TiltSamples = 9;
     private const float ImpactDuration = 0.08f;
     private const int ChargeShakes = 1;
-    // share of the travel over which the wind-up offset unwinds
-    private const float WindUpRelease = 0.4f;
+    // how far the tip toward the target runs ahead of the mouth's travel: the base comes up first
+    private const float TipLead = 2.2f;
     // share of the cork's pop-in it hangs over the mouth before it drops
     private const float CapHang = 0.6f;
     // the cork pops in tipped over and rights itself on the way down
@@ -69,11 +69,12 @@ public sealed class TubeAnimController
     private Vector3 _lipLocal;
     private Vector3 _startPos;
     private float _startAngle;
-    private Vector3 _arcControl;
+    // the mouth's path into the pour: from where the wind-up leaves it, over a low arc, to the anchor
+    private Vector3 _mouthStart;
+    private Vector3 _mouthArc;
     private Vector3 _windUpOffset;
     private float _windUpLean;
     private float _windUpShare;
-    private Vector3 _pourPos;
     private Vector3 _flowEndPos;
     private float _flowEndAngle;
     private Vector3 _restWorldPos;
@@ -294,7 +295,7 @@ public sealed class TubeAnimController
     }
 
     // Moves the tube so its lowest lip hangs just above the target mouth, then tilts it exactly as far as the
-    // remaining liquid needs to keep reaching the lip, pivoting around that lip (which slowly rises) while the liquid flows out.
+    // remaining liquid needs to keep reaching the lip (never so far that the liquid underneath gets into the neck), pivoting around that lip (which slowly rises) while the liquid flows out.
     public void PlayPourInto(TubeLiquid liquid, TubeLiquid target, float amount, Vector3 restWorldPos, PourAnimCallbacks callbacks)
     {
         _selectTween?.Kill(false);
@@ -307,9 +308,10 @@ public sealed class TubeAnimController
         PourTiltSign = isLeft ? -1 : 1;
 
         var volume = liquid.TotalVolume;
+        var below = volume - liquid.TopVolume;
         for (var i = 0; i < TiltSamples; i++)
         {
-            _tilts[i] = liquid.LipAngle(volume - amount * i / (TiltSamples - 1), PourTiltSign);
+            _tilts[i] = liquid.PourAngle(volume - amount * i / (TiltSamples - 1), below, PourTiltSign);
         }
 
         _pourAmount = amount;
@@ -318,8 +320,6 @@ public sealed class TubeAnimController
         _anchor = target.MouthWorld + new Vector3(PourTiltSign * _settings.PourLipSideOffset, _settings.PourLipHeight, 0f);
         _startPos = _transform.position;
         _startAngle = Mathf.DeltaAngle(0f, _transform.eulerAngles.z);
-        _pourPos = PoseFor(_tilts[0]);
-        _arcControl = new Vector3((_startPos.x + _pourPos.x) * 0.5f, Mathf.Max(_startPos.y, _pourPos.y) + _settings.PourArcHeight, 0f);
         _restWorldPos = restWorldPos;
 
         var windUp = _settings.PourWindUpDuration;
@@ -334,6 +334,8 @@ public sealed class TubeAnimController
         _windUpOffset = new Vector3(PourTiltSign * pull, -0.5f * pull, 0f);
         _windUpLean = windUp > 0f ? -PourTiltSign * _settings.PourWindUpLean : 0f;
         _windUpShare = windUp / (windUp + move);
+        _mouthStart = _startPos + _windUpOffset + LipOffset(_startAngle + _windUpLean);
+        _mouthArc = new Vector3((_mouthStart.x + _anchor.x) * 0.5f, Mathf.Max(_mouthStart.y, _anchor.y) + _settings.PourArcHeight, 0f);
 
         // it crouches into the wind-up and pushes off stretched; the body is back to rest before the lip has to meet the anchor
         var body = DOTween.Sequence()
@@ -468,10 +470,20 @@ public sealed class TubeAnimController
 
     private Vector3 PoseFor(float angle)
     {
-        var lip = Vector3.Scale(_lipLocal, _transform.lossyScale);
-        var pos = _anchor - Quaternion.Euler(0f, 0f, angle) * lip;
+        return PoseAround(_anchor, angle);
+    }
+
+    // the tube position that puts its lip at the given point
+    private Vector3 PoseAround(Vector3 lip, float angle)
+    {
+        var pos = lip - LipOffset(angle);
         pos.z = _startPos.z;
         return pos;
+    }
+
+    private Vector3 LipOffset(float angle)
+    {
+        return Quaternion.Euler(0f, 0f, angle) * Vector3.Scale(_lipLocal, _transform.lossyScale);
     }
 
     private void SetPose(Vector3 position, float angle)
@@ -479,16 +491,23 @@ public sealed class TubeAnimController
         _transform.SetPositionAndRotation(position, Quaternion.Euler(0f, 0f, angle));
     }
 
-    // A short wind-up, then it springs over fast and eases out into the pour pose while the wind-up unwinds.
+    // A short wind-up, then the tube tips over mouth first, as if a hand lifted it by the base: it turns about its
+    // mouth, so the base swings up, while the mouth glides over a low arc to the pour point.
     private void UpdateMove(float p)
     {
         var a = _windUpShare;
+        if (p < a)
+        {
+            var windUp = Mathf.Sin(p / a * Mathf.PI * 0.5f);
+            SetPose(_startPos + _windUpOffset * windUp, _startAngle + _windUpLean * windUp);
+            return;
+        }
+
         var q = Mathf.Clamp01((p - a) / (1f - a));
-        var windUp = p < a ? Mathf.Sin(p / a * Mathf.PI * 0.5f) : 1f - EaseInOutSine(Mathf.Clamp01(q / WindUpRelease));
-        var lean = p < a ? _windUpLean * windUp : _windUpLean;
-        var t = 1f - (1f - q) * (1f - q);
-        var tilt = EaseInOutQuad(Mathf.Clamp01((q - 0.1f) / 0.9f));
-        SetPose(QuadBezier(_startPos, _arcControl, _pourPos, t) + _windUpOffset * windUp, Mathf.LerpUnclamped(_startAngle + lean, _tilts[0], tilt));
+        var tilt = 1f - Mathf.Pow(1f - q, TipLead);
+        var angle = Mathf.LerpUnclamped(_startAngle + _windUpLean, _tilts[0], tilt);
+        var mouth = QuadBezier(_mouthStart, _mouthArc, _anchor, EaseInOutSine(q));
+        SetPose(PoseAround(mouth, angle), angle);
     }
 
     // Like pouring from a jug: the flow picks up speed as it goes and the tube rises slowly, drawing the stream out.
@@ -523,6 +542,4 @@ public sealed class TubeAnimController
     }
 
     private static float EaseInOutSine(float t) => -(Mathf.Cos(Mathf.PI * t) - 1f) * 0.5f;
-
-    private static float EaseInOutQuad(float t) => t < 0.5f ? 2f * t * t : 1f - Mathf.Pow(-2f * t + 2f, 2f) * 0.5f;
 }

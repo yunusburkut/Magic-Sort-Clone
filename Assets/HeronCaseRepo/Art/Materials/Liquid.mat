@@ -25,16 +25,22 @@ Material:
     m_TexEnvs: []
     m_Ints: []
     m_Floats:
-    - _BubbleDensity: 0.3
+    - _BottomDarken: 0.26
+    - _Brightness: 1
+    - _BubbleDensity: 0.22
     - _BubbleSize: 0.2
-    - _ChurnStrength: 0.22
+    - _ChurnStrength: 0.16
     - _FaceLighten: 0.1
-    - _FoamStrength: 0.5
-    - _LayerLine: 0.08
-    - _RimStrength: 0.35
-    - _Saturation: 1
-    - _ShineStrength: 0.14
+    - _FoamStrength: 0.35
+    - _LayerLine: 0
+    - _RimStrength: 0.25
+    - _RippleAmp: 0.022
+    - _Saturation: 1.12
+    - _ShineStrength: 0.12
+    - _ShineWidth: 0.07
+    - _SideDarken: 0.45
     - _SplashWhite: 0.3
+    - _WaveAmp: 0.007
     m_Colors: []
   m_BuildTextureStacks: []
   m_AllowLocking: 1

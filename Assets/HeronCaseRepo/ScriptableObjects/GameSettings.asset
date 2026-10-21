@@ -16,15 +16,15 @@ MonoBehaviour:
   _waterRevealDuration: 0.3
   _hiddenLiquidColor: {r: 0.24313726, g: 0.24313726, b: 0.2784314, a: 1}
   _sloshFrequency: 1.6
-  _sloshDamping: 0.12
-  _sloshAccelGain: 0.15
+  _sloshDamping: 0.28
+  _sloshAccelGain: 0.11
   _sloshVerticalGain: 0.03
   _sloshSpinGain: 2.5
   _sloshSwirl: 0.1
   _sloshMaxSlope: 0.22
   _sloshMaxAccel: 300
-  _sloshIdle: 0.06
-  _sloshImpactKick: 1.5
+  _sloshIdle: 0.04
+  _sloshImpactKick: 1
   _liftAmount: 2
   _liftDuration: 0.14
   _anticipationDip: 0.08
@@ -32,23 +32,23 @@ MonoBehaviour:
   _pourWindUpDuration: 0.06
   _pourWindUpDistance: 0.3
   _pourWindUpLean: 6
-  _pourMoveDuration: 0.14
-  _pourFlowBaseDuration: 0.15
-  _pourFlowDurationPerSlot: 0.2
+  _pourMoveDuration: 0.18
+  _pourFlowBaseDuration: 0.2
+  _pourFlowDurationPerSlot: 0.24
   _pourFlowSlotExponent: 0.85
   _pourFlowSpeedUp: 1.35
-  _pourFlowRise: 0.35
+  _pourFlowRise: 0.2
   _pourReturnDuration: 0.22
   _pourArcHeight: 1.5
   _pourLipHeight: 1
   _pourLipSideOffset: 0.15
   _pourMaxAngle: 115
   _pourSortingBoost: 100
-  _streamLipWidth: 0.5
-  _streamEndWidth: 0.36
+  _streamLipWidth: 0.42
+  _streamEndWidth: 0.3
   _streamFallDuration: 0.13
   _streamMouthMargin: 0.2
-  _streamStartThin: 0.4
+  _streamStartThin: 0.2
   _streamEndThin: 0.45
   _splashFoamRate: 16
   _splashSprayRate: 9
