@@ -70,12 +70,14 @@ public class GameSettings : ScriptableObject
     [SerializeField, FormerlySerializedAs("shakeDecay2")] private float _shakeDecay2 = 0.4f;
 
     [Header("Solved Animation")]
-    [SerializeField, FormerlySerializedAs("solvedSquashY")] private float _solvedSquashY = 0.8f;
-    [SerializeField, FormerlySerializedAs("solvedSquashDuration")] private float _solvedSquashDuration = 0.1f;
-    [SerializeField] private float _solvedStretch = 1.08f;
+    [SerializeField, FormerlySerializedAs("solvedSquashY")] private float _solvedSquashY = 0.82f;
+    [SerializeField, FormerlySerializedAs("solvedSquashDuration")] private float _solvedSquashDuration = 0.22f;
+    [SerializeField] private float _solvedChargeDuration = 0.16f;
+    [SerializeField] private float _solvedChargeTremble = 0.02f;
+    [SerializeField] private float _solvedStretch = 1.12f;
     [SerializeField] private float _solvedHopHeight = 0.6f;
     [SerializeField] private float _solvedHopDuration = 0.36f;
-    [SerializeField] private float _solvedLandSquash = 0.92f;
+    [SerializeField] private float _solvedLandSquash = 0.88f;
     [SerializeField, FormerlySerializedAs("solvedBounceDuration")] private float _solvedBounceDuration = 0.5f;
 
     [Header("Enter Animation")]
@@ -151,6 +153,8 @@ public class GameSettings : ScriptableObject
     public float ShakeDecay2 => _shakeDecay2;
     public float SolvedSquashY => _solvedSquashY;
     public float SolvedSquashDuration => _solvedSquashDuration;
+    public float SolvedChargeDuration => _solvedChargeDuration;
+    public float SolvedChargeTremble => _solvedChargeTremble;
     public float SolvedStretch => _solvedStretch;
     public float SolvedHopHeight => _solvedHopHeight;
     public float SolvedHopDuration => _solvedHopDuration;

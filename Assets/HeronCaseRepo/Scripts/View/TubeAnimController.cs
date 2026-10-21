@@ -5,6 +5,7 @@ public sealed class TubeAnimController
 {
     private const int TiltSamples = 9;
     private const float ImpactDuration = 0.08f;
+    private const int ChargeShakes = 2;
 
     private readonly Transform _transform;
     private readonly Transform _body;
@@ -190,8 +191,9 @@ public sealed class TubeAnimController
             .Append(StretchTo(squash, 1f, _settings.SquashSettleDuration, _settle)));
     }
 
-    // Anticipation crouch, a stretched hop that is round again at the top, a squash on the landing and a soft
-    // spring settle. onPeak fires at the top of the hop. The returned tween carries no OnComplete of its own.
+    // Anticipation (a slow sink into a deep crouch that trembles for a beat), a stretched hop that is round again at
+    // the top, a squash on the landing and a soft spring settle. onPeak fires at the top of the hop. The returned
+    // tween carries no OnComplete of its own.
     public Tween PlayMarkSolved(TweenCallback onPeak)
     {
         _selectTween?.Kill(false);
@@ -207,6 +209,8 @@ public sealed class TubeAnimController
 
         var crouch = _settings.SolvedSquashY;
         var crouchTime = _settings.SolvedSquashDuration;
+        var charge = _settings.SolvedChargeDuration;
+        var tremble = _settings.SolvedChargeTremble;
         var stretch = _settings.SolvedStretch;
         var fall = _settings.SquashFallStretch;
         var land = _settings.SolvedLandSquash;
@@ -214,8 +218,12 @@ public sealed class TubeAnimController
 
         var seq = DOTween.Sequence();
         var t = 0f;
-        seq.Insert(t, StretchTo(_stretch, crouch, crouchTime, Ease.InOutSine));
+        seq.Insert(t, StretchTo(_stretch, crouch, crouchTime, Ease.OutCubic));
         t += crouchTime;
+
+        // it gathers itself in the crouch, then springs; the tremble ends back on the crouch
+        seq.Insert(t, DOVirtual.Float(0f, 1f, charge, p => SetStretch(crouch + tremble * Mathf.Sin(p * Mathf.PI * 2f * ChargeShakes))).SetEase(Ease.Linear));
+        t += charge;
 
         seq.Insert(t, _transform.DOLocalMoveY(y + _settings.SolvedHopHeight, half).SetEase(Ease.OutSine));
         seq.Insert(t, StretchTo(crouch, stretch, half * 0.3f, Ease.OutSine));

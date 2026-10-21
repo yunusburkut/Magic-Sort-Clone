@@ -61,12 +61,14 @@ MonoBehaviour:
   _shakeDuration: 0.05
   _shakeDecay1: 0.6
   _shakeDecay2: 0.4
-  _solvedSquashY: 0.9
-  _solvedSquashDuration: 0.1
-  _solvedStretch: 1.08
+  _solvedSquashY: 0.82
+  _solvedSquashDuration: 0.22
+  _solvedChargeDuration: 0.16
+  _solvedChargeTremble: 0.02
+  _solvedStretch: 1.12
   _solvedHopHeight: 0.6
   _solvedHopDuration: 0.36
-  _solvedLandSquash: 0.92
+  _solvedLandSquash: 0.88
   _solvedBounceDuration: 0.4
   _enterDuration: 0.5
   _enterStaggerDelay: 0.06
