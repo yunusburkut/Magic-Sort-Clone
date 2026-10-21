@@ -27,7 +27,9 @@ Material:
     m_Floats:
     - _BubbleDensity: 0.3
     - _BubbleSize: 0.2
+    - _ChurnStrength: 0.22
     - _FaceLighten: 0.1
+    - _FoamStrength: 0.5
     - _LayerLine: 0.08
     - _RimStrength: 0.35
     - _Saturation: 1.2

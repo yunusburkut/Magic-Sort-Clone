@@ -45,8 +45,8 @@ public class GameSettings : ScriptableObject
     [SerializeField] private float _streamEndWidth = 0.36f;
     [SerializeField] private float _streamFallDuration = 0.13f;
     [SerializeField] private float _streamMouthMargin = 0.2f;
-    [SerializeField] private float _splashMistRate = 12f;
-    [SerializeField] private float _splashSprayRate = 14f;
+    [SerializeField, FormerlySerializedAs("_splashMistRate")] private float _splashFoamRate = 16f;
+    [SerializeField] private float _splashSprayRate = 9f;
 
     [Header("Squash & Stretch (height factor, the width keeps the area)")]
     [SerializeField] private float _squashCrouch = 0.93f;
@@ -132,7 +132,7 @@ public class GameSettings : ScriptableObject
     public float StreamEndWidth => _streamEndWidth;
     public float StreamFallDuration => _streamFallDuration;
     public float StreamMouthMargin => _streamMouthMargin;
-    public float SplashMistRate => _splashMistRate;
+    public float SplashFoamRate => _splashFoamRate;
     public float SplashSprayRate => _splashSprayRate;
     public float SquashCrouch => _squashCrouch;
     public float SquashJumpStretch => _squashJumpStretch;

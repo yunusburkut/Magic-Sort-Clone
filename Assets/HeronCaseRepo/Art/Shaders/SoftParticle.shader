@@ -1,7 +1,8 @@
 Shader "HeronCase/SoftParticle"
 {
-    // Round particle with a soft edge, colored by the particle color. Used for the splash mist and droplets;
-    // _Droplet shades it as a small lit drop of water.
+    // Round particle with a soft edge, colored by the particle color. Used for the splash foam and droplets;
+    // _Droplet shades it as a small lit drop of water, and _Foam as a clump of bubbles that erodes away with the
+    // particle alpha (the per-particle random comes in TEXCOORD0.z, see PourStreamView).
     // _Star turns it into a four-point twinkle, and _DstBlend One makes it additive for the solved sparks.
     Properties
     {
@@ -9,6 +10,9 @@ Shader "HeronCase/SoftParticle"
         _Core ("Bright Core", Range(0,1)) = 0.0
         _Star ("Star Rays", Range(0,1)) = 0.0
         _Droplet ("Water Drop Shading", Range(0,1)) = 0.0
+        _Foam ("Eroding Foam", Range(0,1)) = 0.0
+        _FoamScale ("Foam Bubbles Per Half Height", Float) = 1.3
+        _FoamOpacity ("Foam Opacity", Range(0,1)) = 0.7
         [Enum(UnityEngine.Rendering.BlendMode)] _DstBlend ("Dst Blend", Float) = 10
     }
 
@@ -33,7 +37,7 @@ Shader "HeronCase/SoftParticle"
         struct Attributes
         {
             float4 positionOS : POSITION;
-            float2 uv         : TEXCOORD0;
+            float3 uv         : TEXCOORD0;
             float4 color      : COLOR;
             UNITY_VERTEX_INPUT_INSTANCE_ID
         };
@@ -41,7 +45,7 @@ Shader "HeronCase/SoftParticle"
         struct Varyings
         {
             float4 positionCS : SV_POSITION;
-            float2 uv         : TEXCOORD0;
+            float3 uv         : TEXCOORD0;
             half4  color      : COLOR;
             UNITY_VERTEX_OUTPUT_STEREO
         };
@@ -51,8 +55,35 @@ Shader "HeronCase/SoftParticle"
             half _Core;
             half _Star;
             half _Droplet;
+            half _Foam;
+            float _FoamScale;
+            half _FoamOpacity;
             half _DstBlend;
         CBUFFER_END
+
+        float2 Hash22(float2 p)
+        {
+            p = float2(dot(p, float2(127.1, 311.7)), dot(p, float2(269.5, 183.3)));
+            return frac(sin(p) * 43758.5453);
+        }
+
+        // distance to the nearest point of a jittered grid: low in round cells, like a clump of bubbles
+        float Cells(float2 p)
+        {
+            float2 i = floor(p);
+            float2 f = frac(p);
+            float d = 1.0;
+            for (int y = -1; y <= 1; y++)
+            {
+                for (int x = -1; x <= 1; x++)
+                {
+                    float2 o = float2(x, y);
+                    float2 c = o + Hash22(i + o) * 0.8 + 0.1 - f;
+                    d = min(d, dot(c, c));
+                }
+            }
+            return sqrt(d);
+        }
 
         Varyings vert(Attributes IN)
         {
@@ -69,7 +100,7 @@ Shader "HeronCase/SoftParticle"
         {
             UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(IN);
 
-            float2 p = IN.uv * 2.0 - 1.0;
+            float2 p = IN.uv.xy * 2.0 - 1.0;
             float r = length(p);
             float aa = max(fwidth(r), 1e-4);
             half a = 1.0 - smoothstep(1.0 - _Softness - aa, 1.0, r);
@@ -89,7 +120,21 @@ Shader "HeronCase/SoftParticle"
             half3 drop = saturate(IN.color.rgb * lerp(1.15, 0.65, r * r));
             drop = lerp(drop, half3(1, 1, 1), exp(-dot(hp, hp) * 20.0) * 0.85);
             rgb = lerp(rgb, drop, _Droplet);
-            return half4(rgb, a * IN.color.a);
+            half alpha = a * IN.color.a;
+
+            // foam: the falling alpha raises a cut-off through a bubbly field, so the clump breaks into smaller
+            // bubbles and pops instead of fading out like smoke; the cells stay round on a stretched quad
+            float aspect = fwidth(IN.uv.y) / max(fwidth(IN.uv.x), 1e-6);
+            float cells = Cells(p * float2(aspect, 1.0) * _FoamScale + IN.uv.z * 61.0);
+            float field = (1.0 - r) * 0.8 + (0.5 - cells) * 0.5;
+            float erode = 1.0 - IN.color.a;
+            float fw = max(fwidth(field), 1e-4);
+            half foamA = smoothstep(erode - fw, erode + fw, field) * _FoamOpacity;
+            // lighter inside, with the poured color showing toward the eroding edges
+            half3 foamRgb = lerp(IN.color.rgb * 0.85, lerp(IN.color.rgb, half3(1, 1, 1), 0.3), smoothstep(erode, erode + 0.3, field));
+            rgb = lerp(rgb, foamRgb, _Foam);
+            alpha = lerp(alpha, foamA, _Foam);
+            return half4(rgb, alpha);
         }
         ENDHLSL
 

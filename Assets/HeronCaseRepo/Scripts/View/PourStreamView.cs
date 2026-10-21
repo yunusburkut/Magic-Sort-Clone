@@ -1,18 +1,21 @@
+using System.Collections.Generic;
 using UnityEngine;
 
-// The liquid falling from a tilted tube's lip into the target, plus the mist and droplets where it lands.
+// The liquid falling from a tilted tube's lip into the target, plus the foam and droplets where it lands.
 // The ribbon is rebuilt every frame along a curve from the lip to the target surface: the head drops from the
 // lip when the pour starts, the tail drops after it when the pour ends. Sizes are in tube-local units.
 [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
 public sealed class PourStreamView : MonoBehaviour
 {
     private const int Segments = 28;
-    private const int MistOrderOffset = 5;
+    private const int SplashOrderOffset = 5;
 
     private static readonly int CapsId = Shader.PropertyToID("_Caps");
     private static readonly int SoftnessId = Shader.PropertyToID("_Softness");
     private static readonly int CoreId = Shader.PropertyToID("_Core");
     private static readonly int DropletId = Shader.PropertyToID("_Droplet");
+    private static readonly int FoamId = Shader.PropertyToID("_Foam");
+    private static readonly int FoamOpacityId = Shader.PropertyToID("_FoamOpacity");
 
     private GameSettings _settings;
     private TubeLiquid _source;
@@ -29,13 +32,13 @@ public sealed class PourStreamView : MonoBehaviour
     private readonly Vector2[] _uv2 = new Vector2[(Segments + 1) * 2];
     private readonly Color[] _cols = new Color[(Segments + 1) * 2];
 
-    private ParticleSystem _mist;
+    private ParticleSystem _foam;
     private ParticleSystem _spray;
-    private Material _mistMaterial;
+    private Material _foamMaterial;
     private Material _sprayMaterial;
     private ParticleSystem.EmitParams _emit;
     private readonly ParticleSystem.Particle[] _particles = new ParticleSystem.Particle[80];
-    private float _mistDebt;
+    private float _foamDebt;
     private float _sprayDebt;
     private Vector3 _targetPos;
     private float _targetLevel;
@@ -77,20 +80,21 @@ public sealed class PourStreamView : MonoBehaviour
         _mesh.triangles = tris;
         GetComponent<MeshFilter>().sharedMesh = _mesh;
 
-        _mistMaterial = new Material(splashMaterial);
-        _mistMaterial.SetFloat(SoftnessId, 1f);
+        _foamMaterial = new Material(splashMaterial);
+        _foamMaterial.SetFloat(FoamId, 1f);
+        _foamMaterial.SetFloat(FoamOpacityId, 0.7f);
         _sprayMaterial = new Material(splashMaterial);
         _sprayMaterial.SetFloat(SoftnessId, 0.2f);
         _sprayMaterial.SetFloat(DropletId, 1f);
 
-        _mist = CreateMist(sortingOrder + MistOrderOffset);
-        _spray = CreateSpray(sortingOrder + MistOrderOffset + 1);
+        _foam = CreateFoam(sortingOrder + SplashOrderOffset);
+        _spray = CreateSpray(sortingOrder + SplashOrderOffset + 1);
     }
 
     private void OnDestroy()
     {
         if (_mesh != null) Destroy(_mesh);
-        if (_mistMaterial != null) Destroy(_mistMaterial);
+        if (_foamMaterial != null) Destroy(_foamMaterial);
         if (_sprayMaterial != null) Destroy(_sprayMaterial);
     }
 
@@ -106,7 +110,7 @@ public sealed class PourStreamView : MonoBehaviour
         _headTime = 0f;
         _tailTime = 0f;
         _flow = 0f;
-        _mistDebt = 0f;
+        _foamDebt = 0f;
         _sprayDebt = 0f;
         _targetPos = target.transform.position;
         _targetLevel = SurfaceLevel();
@@ -114,12 +118,11 @@ public sealed class PourStreamView : MonoBehaviour
         BuildCurve(out _p0, out _p1, out _p2, out _p3);
         _renderer.enabled = true;
 
-        // the splash is the poured liquid, so it takes its color instead of white; the vapor is a paler haze of it
+        // the splash is the poured liquid, so it takes its color instead of white; the foam is a paler froth of it
         var spray = _spray.main;
         spray.startColor = new ParticleSystem.MinMaxGradient(Color.Lerp(color, Color.white, 0.15f), Color.Lerp(color, Color.white, 0.3f));
-        var mist = _mist.main;
-        var haze = Color.Lerp(color, Color.white, 0.6f);
-        mist.startColor = new Color(haze.r, haze.g, haze.b, 0.75f);
+        var foam = _foam.main;
+        foam.startColor = Color.Lerp(color, Color.white, 0.45f);
     }
 
     public void End()
@@ -151,9 +154,10 @@ public sealed class PourStreamView : MonoBehaviour
         if (landed)
         {
             _target.SetImpact(_p3, _flow);
-            Emit(_mist, ref _mistDebt, _settings.SplashMistRate * _flow * dt, new Vector2(0f, 50f), new Vector2(0.3f, 0.6f), new Vector2(0f, 0.18f), false);
+            // froth slides out sideways along the surface, like the white water at the foot of a waterfall
+            Emit(_foam, ref _foamDebt, _settings.SplashFoamRate * _flow * dt, new Vector2(84f, 90f), new Vector2(0.7f, 1.2f), new Vector2(0.05f, 0.15f), false);
             // the drops leave from the rim of the stream and arc outward, so they read against it instead of inside it
-            Emit(_spray, ref _sprayDebt, _settings.SplashSprayRate * _flow * dt, new Vector2(4f, 12f), new Vector2(1.8f, 2.5f), new Vector2(0.2f, 0.3f), true);
+            Emit(_spray, ref _sprayDebt, _settings.SplashSprayRate * _flow * dt, new Vector2(8f, 22f), new Vector2(1.4f, 1.8f), new Vector2(0.18f, 0.26f), true);
         }
 
         _renderer.GetPropertyBlock(_mpb);
@@ -169,7 +173,7 @@ public sealed class PourStreamView : MonoBehaviour
 
     // The target can be picked up again the moment the pour ends; the loose end of the stream and the splash
     // still in the air ride along with it instead of hanging where its liquid used to be. The splash also rides
-    // up with the filling surface, which rises much faster than the vapor, so it is not swallowed by the liquid.
+    // up with the filling surface, which rises much faster than the drops fall, so it is not swallowed by the liquid.
     private void FollowTarget()
     {
         if (_target == null) return;
@@ -191,7 +195,7 @@ public sealed class PourStreamView : MonoBehaviour
 
         var shift = delta + Vector3.up * rise;
         if (shift.sqrMagnitude < 1e-8f) return;
-        Shift(_mist, shift);
+        Shift(_foam, shift);
         Shift(_spray, shift);
     }
 
@@ -223,7 +227,6 @@ public sealed class PourStreamView : MonoBehaviour
         if (!ps.isPlaying) ps.Play();
 
         var main = ps.main;
-        var size = main.startSize;
         var gravity = -Physics.gravity.y * main.gravityModifier.constant;
         for (var i = 0; i < n; i++)
         {
@@ -231,12 +234,17 @@ public sealed class PourStreamView : MonoBehaviour
             var a = side * Random.Range(angle.x, angle.y) * Mathf.Deg2Rad;
             _emit.position = _p3 + new Vector3(side * Random.Range(offset.x, offset.y) * _unit, 0f, 0f);
             _emit.velocity = new Vector3(Mathf.Sin(a), Mathf.Cos(a), 0f) * (Random.Range(speed.x, speed.y) * _unit);
-            _emit.startSize = Random.Range(size.constantMin, size.constantMax) * _unit;
+            // one random pick for both axes keeps a stretched particle's proportions
+            var s = Random.value;
+            if (main.startSize3D) _emit.startSize3D = new Vector3(Pick(main.startSizeX, s), Pick(main.startSizeY, s), 1f) * _unit;
+            else _emit.startSize = Pick(main.startSize, s) * _unit;
             if (hop && gravity > 0f) _emit.startLifetime = 2f * _emit.velocity.y / gravity;
             else _emit.ResetStartLifetime();
             ps.Emit(_emit, 1);
         }
     }
+
+    private static float Pick(ParticleSystem.MinMaxCurve range, float t) => Mathf.Lerp(range.constantMin, range.constantMax, t);
 
     // Leaves the lip moving sideways, then gravity bends it straight down into the target mouth.
     private void BuildCurve(out Vector3 p0, out Vector3 p1, out Vector3 p2, out Vector3 p3)
@@ -315,35 +323,51 @@ public sealed class PourStreamView : MonoBehaviour
 
     // ---- splash ---------------------------------------------------------------------------------------------
 
-    private ParticleSystem CreateMist(int sortingOrder)
+    private ParticleSystem CreateFoam(int sortingOrder)
     {
-        var ps = CreateSystem("SplashMist", _mistMaterial, sortingOrder);
+        var ps = CreateSystem("SplashFoam", _foamMaterial, sortingOrder);
 
         var main = ps.main;
-        // soft vapor that puffs up slowly and spreads out while it fades
-        main.startLifetime = new ParticleSystem.MinMaxCurve(0.7f, 1.1f);
-        main.startSize = new ParticleSystem.MinMaxCurve(0.4f, 0.7f);
-        main.startRotation = new ParticleSystem.MinMaxCurve(0f, Mathf.PI * 2f);
-        main.startColor = new Color(1f, 1f, 1f, 0.75f);
-        main.gravityModifier = -0.1f;
-        main.maxParticles = 64;
+        // flat clumps of froth on the surface, twice as wide as tall
+        main.startLifetime = new ParticleSystem.MinMaxCurve(0.5f, 0.8f);
+        main.startSize3D = true;
+        main.startSizeX = new ParticleSystem.MinMaxCurve(0.3f, 0.46f);
+        main.startSizeY = new ParticleSystem.MinMaxCurve(0.15f, 0.23f);
+        main.startSizeZ = 1f;
+        main.startColor = Color.white;
+        main.gravityModifier = 0f;
+        main.maxParticles = 48;
 
         var size = ps.sizeOverLifetime;
         size.enabled = true;
-        size.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.EaseInOut(0f, 0.6f, 1f, 1.8f));
+        size.size = new ParticleSystem.MinMaxCurve(1f, new AnimationCurve(new Keyframe(0f, 0.6f), new Keyframe(0.3f, 1.1f), new Keyframe(1f, 1.5f)));
 
+        // the alpha is the erosion: it pops in from a few bubbles, then breaks apart and is gone (see SoftParticle)
         var color = ps.colorOverLifetime;
         color.enabled = true;
         var gradient = new Gradient();
         gradient.SetKeys(
             new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
-            new[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(0.8f, 0.2f), new GradientAlphaKey(0f, 1f) });
+            new[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(1f, 0.12f), new GradientAlphaKey(0f, 1f) });
         color.color = gradient;
 
+        // it slides out fast and settles, like a wave running out
         var limit = ps.limitVelocityOverLifetime;
         limit.enabled = true;
-        limit.dampen = 0.1f;
-        limit.limit = 0.55f;
+        limit.limit = 100f;
+        limit.drag = 3f;
+        limit.multiplyDragByParticleSize = false;
+        limit.multiplyDragByParticleVelocity = false;
+
+        // a stable random per particle, so every clump erodes in its own pattern
+        var psRenderer = ps.GetComponent<ParticleSystemRenderer>();
+        psRenderer.SetActiveVertexStreams(new List<ParticleSystemVertexStream>
+        {
+            ParticleSystemVertexStream.Position,
+            ParticleSystemVertexStream.Color,
+            ParticleSystemVertexStream.UV,
+            ParticleSystemVertexStream.StableRandomX,
+        });
 
         return ps;
     }
@@ -355,7 +379,7 @@ public sealed class PourStreamView : MonoBehaviour
         var main = ps.main;
         // the lifetime is set per drop to its hop, see Emit
         main.startLifetime = 0.4f;
-        main.startSize = new ParticleSystem.MinMaxCurve(0.1f, 0.17f);
+        main.startSize = new ParticleSystem.MinMaxCurve(0.08f, 0.14f);
         main.gravityModifier = 0.8f;
         main.maxParticles = 48;
 
