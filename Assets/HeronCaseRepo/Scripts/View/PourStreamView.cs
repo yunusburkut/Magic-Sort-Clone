@@ -97,7 +97,8 @@ public sealed class PourStreamView : MonoBehaviour
         _source = source;
         _target = target;
         _tiltSign = tiltSign;
-        _color = color;
+        // mesh vertex colors are not converted to linear by Unity
+        _color = color.linear;
         _active = true;
         _ending = false;
         _headTime = 0f;
@@ -111,7 +112,7 @@ public sealed class PourStreamView : MonoBehaviour
         _renderer.enabled = true;
 
         var spray = _spray.main;
-        spray.startColor = new ParticleSystem.MinMaxGradient(Color.Lerp(color, Color.white, 0.35f), Color.Lerp(color, Color.white, 0.6f));
+        spray.startColor = new ParticleSystem.MinMaxGradient(Color.Lerp(color, Color.white, 0.12f), Color.Lerp(color, Color.white, 0.35f));
     }
 
     public void End()

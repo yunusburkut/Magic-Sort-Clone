@@ -14,22 +14,22 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::HeronCaseRepo.Scripts.Data.WaterColorPalette
   _entries:
   - colorId: 0
-    color: {r: 1, g: 0, b: 0, a: 1}
+    color: {r: 0.93, g: 0.11, b: 0.18, a: 1}
   - colorId: 1
-    color: {r: 0, g: 0.028357267, b: 1, a: 1}
+    color: {r: 0.1, g: 0.38, b: 1, a: 1}
   - colorId: 2
-    color: {r: 0, g: 1, b: 0.07855159, a: 1}
+    color: {r: 0.16, g: 0.8, b: 0.22, a: 1}
   - colorId: 3
-    color: {r: 1, g: 0.99437773, b: 0, a: 1}
+    color: {r: 1, g: 0.8, b: 0, a: 1}
   - colorId: 4
-    color: {r: 1, g: 0.542188, b: 0, a: 1}
+    color: {r: 1, g: 0.45, b: 0, a: 1}
   - colorId: 5
-    color: {r: 0.6513127, g: 0, b: 1, a: 1}
+    color: {r: 0.58, g: 0.16, b: 0.92, a: 1}
   - colorId: 6
-    color: {r: 0, g: 1, b: 0.9813692, a: 1}
+    color: {r: 0, g: 0.78, b: 0.93, a: 1}
   - colorId: 7
-    color: {r: 1, g: 0, b: 0.85638034, a: 1}
+    color: {r: 1, g: 0.25, b: 0.62, a: 1}
   - colorId: 8
-    color: {r: 0.3490566, g: 0.22899593, b: 0.13995194, a: 1}
+    color: {r: 0.55, g: 0.3, b: 0.12, a: 1}
   - colorId: 9
-    color: {r: 1, g: 1, b: 1, a: 1}
+    color: {r: 0.95, g: 0.95, b: 0.97, a: 1}

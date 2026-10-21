@@ -12,20 +12,20 @@ Shader "HeronCase/Liquid"
     Properties
     {
         [Header(Color)]
-        _Saturation ("Saturation", Range(0,2)) = 1.12
+        _Saturation ("Saturation", Range(0,2)) = 1.2
         _Brightness ("Brightness", Range(0.5,2)) = 1.05
         _SideDarken ("Side Darken", Range(0,1)) = 0.3
         _BottomDarken ("Bottom Darken", Range(0,1)) = 0.16
-        _ShineStrength ("Side Shine", Range(0,1)) = 0.2
+        _ShineStrength ("Side Shine", Range(0,1)) = 0.14
         _ShinePos ("Side Shine Position (-1..1)", Range(-1,1)) = -0.62
         _ShineWidth ("Side Shine Width", Range(0.02,0.6)) = 0.09
-        _LayerLine ("Layer Line Strength", Range(0,1)) = 0.16
+        _LayerLine ("Layer Line Strength", Range(0,1)) = 0.08
         _LayerLineWidth ("Layer Line Width", Float) = 0.03
 
         [Header(Surface)]
-        _FaceLighten ("Top Face Lighten", Range(0,1)) = 0.3
+        _FaceLighten ("Top Face Lighten", Range(0,1)) = 0.1
         _FaceBackDarken ("Top Face Far Side Darken", Range(0,1)) = 0.1
-        _RimStrength ("Front Rim Highlight", Range(0,1)) = 0.5
+        _RimStrength ("Front Rim Highlight", Range(0,1)) = 0.35
         _RimWidth ("Front Rim Width", Float) = 0.035
         _WaveAmp ("Idle Wave Amplitude", Float) = 0.012
         _RippleAmp ("Impact Ripple Amplitude", Float) = 0.035

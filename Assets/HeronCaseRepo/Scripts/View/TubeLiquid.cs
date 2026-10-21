@@ -327,7 +327,8 @@ public sealed class TubeLiquid : MonoBehaviour
             var midLocal = up * h + right * mid;
 
             _bounds[i] = new Vector4(h, mid, half, _shape.EllipseAt(midLocal.y));
-            var col = Color.Lerp(_hiddenColor, l.Color, l.Reveal);
+            // vectors skip Unity's gamma-to-linear conversion, so the palette colors are converted here
+            var col = Color.Lerp(_hiddenColor, l.Color, l.Reveal).linear;
             _colors[i] = new Vector4(col.r, col.g, col.b, 1f);
         }
 

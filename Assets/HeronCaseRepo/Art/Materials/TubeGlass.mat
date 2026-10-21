@@ -30,7 +30,7 @@ Material:
     m_Ints: []
     m_Floats:
     - _AlphaBoost: 1.35
-    - _BodyAlpha: 0.35
+    - _BodyAlpha: 0.22
     - _EdgeGlow: 0.25
     - _SweepPeriod: 3.5
     - _SweepStagger: 0.06

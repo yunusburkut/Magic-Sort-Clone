@@ -25,7 +25,11 @@ Material:
     m_TexEnvs: []
     m_Ints: []
     m_Floats:
-    - _Lighten: 0.13
+    - _BackShineStrength: 0.08
+    - _Lighten: 0.05
+    - _Saturation: 1.2
+    - _ShineStrength: 0.3
+    - _StreakStrength: 0.2
     m_Colors: []
   m_BuildTextureStacks: []
   m_AllowLocking: 1

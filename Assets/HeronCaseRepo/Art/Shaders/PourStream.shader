@@ -19,7 +19,7 @@ Shader "HeronCase/PourStream"
         _HeadFadeLength ("Head Fade Length", Float) = 0.18
 
         [Header(Casual Color)]
-        _Saturation ("Saturation", Range(0,2)) = 1.12
+        _Saturation ("Saturation", Range(0,2)) = 1.2
         _Brightness ("Brightness", Range(0.5,2)) = 1.05
         _EdgeDarken ("Edge Darken", Range(0,1)) = 0.18
         _Lighten ("Lighten (matches liquid seen through the glass, linear)", Range(0,1)) = 0.13
@@ -28,9 +28,9 @@ Shader "HeronCase/PourStream"
         _ShineColor ("Shine Color", Color) = (1,1,1,1)
         _ShinePos ("Shine Position (-1..1)", Range(-1,1)) = -0.4
         _ShineWidth ("Shine Width", Range(0.02,0.6)) = 0.15
-        _ShineStrength ("Shine Strength", Range(0,1)) = 0.55
-        _BackShineStrength ("Back Shine Strength", Range(0,1)) = 0.18
-        _StreakStrength ("Flowing Streaks", Range(0,1)) = 0.35
+        _ShineStrength ("Shine Strength", Range(0,1)) = 0.3
+        _BackShineStrength ("Back Shine Strength", Range(0,1)) = 0.08
+        _StreakStrength ("Flowing Streaks", Range(0,1)) = 0.2
         _StreakFreq ("Streak Frequency (per unit)", Float) = 6
     }
 

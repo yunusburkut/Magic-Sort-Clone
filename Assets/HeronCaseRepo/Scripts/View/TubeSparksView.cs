@@ -38,9 +38,9 @@ public sealed class TubeSparksView : MonoBehaviour
         if (!_streaks.isPlaying) _streaks.Play();
         if (!_stars.isPlaying) _stars.Play();
 
-        var tint = Color.Lerp(color, Color.white, 0.3f);
+        var tint = Color.Lerp(color, Color.white, 0.15f);
         tint.a = 1f;
-        var pale = Color.Lerp(color, Color.white, 0.65f);
+        var pale = Color.Lerp(color, Color.white, 0.45f);
         pale.a = 1f;
 
         var streak = new ParticleSystem.EmitParams();
