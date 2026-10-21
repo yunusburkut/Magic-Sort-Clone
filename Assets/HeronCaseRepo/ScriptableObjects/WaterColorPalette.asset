@@ -20,7 +20,7 @@ MonoBehaviour:
   - colorId: 2
     color: {r: 0.16, g: 0.8, b: 0.22, a: 1}
   - colorId: 3
-    color: {r: 1, g: 0.8, b: 0, a: 1}
+    color: {r: 1, g: 0.86, b: 0, a: 1}
   - colorId: 4
     color: {r: 1, g: 0.45, b: 0, a: 1}
   - colorId: 5

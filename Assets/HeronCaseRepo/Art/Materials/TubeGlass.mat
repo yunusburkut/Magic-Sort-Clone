@@ -30,15 +30,16 @@ Material:
     m_Ints: []
     m_Floats:
     - _AlphaBoost: 1.35
-    - _BodyAlpha: 0.22
-    - _EdgeGlow: 0.25
+    - _BodyAlpha: 0.15
+    - _EdgeGlow: 0.05
+    - _RimAlpha: 0.55
     - _SweepPeriod: 3.5
     - _SweepStagger: 0.06
     - _SweepStrength: 0.35
     - _SweepWidth: 0.09
     m_Colors:
     - _Color: {r: 1, g: 1, b: 1, a: 1}
-    - _GlassTint: {r: 0.86, g: 0.95, b: 1, a: 1}
+    - _GlassTint: {r: 0.8, g: 0.9, b: 1, a: 1}
     - _SweepColor: {r: 1, g: 1, b: 1, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
