@@ -6,6 +6,11 @@ public class TubeView : MonoBehaviour, IPointerClickHandler
 {
     private static readonly int GlowId = Shader.PropertyToID("_Glow");
     private static readonly int GlowLineId = Shader.PropertyToID("_GlowLine");
+    private static readonly int FlashId = Shader.PropertyToID("_Flash");
+    private static readonly int ShineId = Shader.PropertyToID("_Shine");
+
+    private const float SolvedFlashDuration = 0.35f;
+    private const float SolvedShineDuration = 0.5f;
 
     [Header("References")]
     // squash & stretch target holding the glass, cloak and liquid; the root only moves and tilts
@@ -20,6 +25,8 @@ public class TubeView : MonoBehaviour, IPointerClickHandler
     [SerializeField] private int liquidSortingOrder = 10;
     [SerializeField] private int streamSortingOrder = 20;
     [SerializeField] private int sparkSortingOrder = 45;
+    // the solved sunburst, behind every bottle
+    [SerializeField] private int haloSortingOrder = 2;
 
     [Header("Cork (rendered on the bottle sprite's canvas, pivot on its top edge)")]
     [SerializeField] private Sprite capSprite;
@@ -66,7 +73,10 @@ public class TubeView : MonoBehaviour, IPointerClickHandler
     private TweenCallback _cachedPourFlowEnd;
     private TweenCallback _cachedInvokePourComplete;
     private TweenCallback _cachedInvokeShakeComplete;
+    private TweenCallback _cachedSolvedSeat;
     private TweenCallback _cachedSolvedPeak;
+    private TweenCallback<float> _cachedSetGlassFlash;
+    private TweenCallback<float> _cachedSetGlassShine;
     private TweenCallback _cachedPourLandHaptic;
 
     private TweenScope _scope;
@@ -98,7 +108,10 @@ public class TubeView : MonoBehaviour, IPointerClickHandler
         _cachedPourFlowEnd = OnPourFlowEnd;
         _cachedInvokePourComplete = InvokePourComplete;
         _cachedInvokeShakeComplete = InvokeShakeComplete;
-        _cachedSolvedPeak = PlaySolvedSparks;
+        _cachedSolvedSeat = OnSolvedSeat;
+        _cachedSolvedPeak = OnSolvedPeak;
+        _cachedSetGlassFlash = SetGlassFlash;
+        _cachedSetGlassShine = SetGlassShine;
         _cachedPourLandHaptic = HapticService.PlayPourLand;
 
         _liquid = CreateChild<TubeLiquid>("Liquid", body);
@@ -134,7 +147,7 @@ public class TubeView : MonoBehaviour, IPointerClickHandler
 
         _liquid.Setup(BuildLiquidShape(), settings, liquidMaterial, liquidSortingOrder);
         _stream.Setup(settings, pourStreamMaterial, splashMaterial, streamSortingOrder);
-        _sparks.Setup(splashMaterial, sparkSortingOrder);
+        _sparks.Setup(splashMaterial, sparkSortingOrder, haloSortingOrder);
         CacheSortingOrders();
 
         _waterSlots = new TubeWaterSlots(_liquid, data.capacity);
@@ -271,6 +284,18 @@ public class TubeView : MonoBehaviour, IPointerClickHandler
         tubeRenderer.SetPropertyBlock(_glassBlock);
     }
 
+    private void SetGlassFlash(float flash) => SetGlassFloat(FlashId, flash);
+
+    // 0..1 runs the band from below the bottle to past its top, so it is off at both ends
+    private void SetGlassShine(float shine) => SetGlassFloat(ShineId, shine);
+
+    private void SetGlassFloat(int id, float value)
+    {
+        tubeRenderer.GetPropertyBlock(_glassBlock);
+        _glassBlock.SetFloat(id, value);
+        tubeRenderer.SetPropertyBlock(_glassBlock);
+    }
+
     public void Shake()
     {
         float snapY;
@@ -308,13 +333,22 @@ public class TubeView : MonoBehaviour, IPointerClickHandler
         EventBus<TubeSolvedEvent>.Publish(new TubeSolvedEvent { SolvedColor = TopColor });
         HapticService.PlayWin();
 
-        return _anim.PlayMarkSolved(_cachedSolvedPeak);
+        return _anim.PlayMarkSolved(_cachedSolvedSeat, _cachedSolvedPeak);
     }
 
-    private void PlaySolvedSparks()
+    // the cork snaps in: the bottle flashes and a few glints pop around the cork
+    private void OnSolvedSeat()
+    {
+        _sparks.Pop(_liquid.MouthWorld, Mathf.Abs(transform.lossyScale.x));
+        _scope.Add(DOVirtual.Float(1f, 0f, SolvedFlashDuration, _cachedSetGlassFlash).SetEase(Ease.OutQuad));
+    }
+
+    // the top of the hop: the big burst, while one band of shine runs up the bottle
+    private void OnSolvedPeak()
     {
         var bounds = tubeRenderer.bounds;
-        _sparks.Burst(_liquid.MouthWorld, bounds.center, bounds.extents, TopColor, Mathf.Abs(transform.lossyScale.x));
+        _sparks.Burst(_liquid.MouthWorld, bounds.center, bounds.extents, Mathf.Abs(transform.lossyScale.x));
+        _scope.Add(DOVirtual.Float(0f, 1f, SolvedShineDuration, _cachedSetGlassShine).SetEase(Ease.InOutSine));
     }
 
     public void PourInto(TubeView target)

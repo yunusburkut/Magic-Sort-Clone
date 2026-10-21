@@ -240,9 +240,9 @@ public sealed class TubeAnimController
     }
 
     // Anticipation (a slow sink into a deep crouch that trembles for a beat), a stretched hop that is round again at
-    // the top, a squash on the landing and a soft spring settle. onPeak fires at the top of the hop. The returned
-    // tween carries no OnComplete of its own.
-    public Tween PlayMarkSolved(TweenCallback onPeak)
+    // the top, a squash on the landing and a soft spring settle. onSeat fires as the cork snaps in, onPeak at the top
+    // of the hop. The returned tween carries no OnComplete of its own.
+    public Tween PlayMarkSolved(TweenCallback onSeat, TweenCallback onPeak)
     {
         _selectTween?.Kill(false);
         _shakeTween?.Kill(false);
@@ -267,6 +267,7 @@ public sealed class TubeAnimController
         var seq = DOTween.Sequence();
         // the snap of the cap is what pushes the bottle into its crouch
         var t = _cap != null ? InsertCapSnap(seq) : 0f;
+        seq.InsertCallback(t, onSeat);
         seq.Insert(t, StretchTo(_stretch, crouch, crouchTime, Ease.OutCubic));
         t += crouchTime;
 

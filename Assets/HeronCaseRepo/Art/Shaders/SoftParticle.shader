@@ -3,12 +3,19 @@ Shader "HeronCase/SoftParticle"
     // Round particle with a soft edge, colored by the particle color. Used for the splash foam and droplets;
     // _Droplet shades it as a small lit drop of water, and _Foam as a clump of bubbles that erodes away with the
     // particle alpha (the per-particle random comes in TEXCOORD0.z, see PourStreamView).
-    // _Star turns it into a four-point twinkle, and _DstBlend One makes it additive for the solved sparks.
+    // _Star turns it into a four-point twinkle, _Ring into a ring of light, _Rays into a sunburst, _Twinkle makes it
+    // flicker at its own pace, and _DstBlend One makes it additive for the solved celebration. The sunburst and the
+    // twinkle read the per-particle random from TEXCOORD0.z as well.
     Properties
     {
         _Softness ("Edge Softness", Range(0.01,1)) = 0.6
         _Core ("Bright Core", Range(0,1)) = 0.0
         _Star ("Star Rays", Range(0,1)) = 0.0
+        _Ring ("Ring", Range(0,1)) = 0.0
+        _RingWidth ("Ring Width", Range(0.01,0.5)) = 0.1
+        _Rays ("Sunburst", Range(0,1)) = 0.0
+        _RayCount ("Sunburst Ray Count", Float) = 28
+        _Twinkle ("Twinkle", Range(0,1)) = 0.0
         _Droplet ("Water Drop Shading", Range(0,1)) = 0.0
         _Foam ("Eroding Foam", Range(0,1)) = 0.0
         _FoamScale ("Foam Bubbles Per Half Height", Float) = 1.3
@@ -54,6 +61,11 @@ Shader "HeronCase/SoftParticle"
             half _Softness;
             half _Core;
             half _Star;
+            half _Ring;
+            half _RingWidth;
+            half _Rays;
+            float _RayCount;
+            half _Twinkle;
             half _Droplet;
             half _Foam;
             float _FoamScale;
@@ -112,6 +124,42 @@ Shader "HeronCase/SoftParticle"
             half star = saturate(rays * rays + glow);
             a = lerp(a, star, _Star);
 
+            // a thin band just inside the edge, brighter and dimmer around the circle in a pattern set by the
+            // particle's random, so it reads as a wave of light rather than a drawn circle; whole frequencies keep
+            // it seamless where atan2 wraps
+            float edge = 1.0 - _RingWidth;
+            half ring = 1.0 - smoothstep(0.0, _RingWidth, abs(r - edge));
+            float around = atan2(p.y, p.x);
+            float wave = 0.5 + 0.3 * sin(around * 3.0 + IN.uv.z * 40.0) + 0.2 * sin(around * 7.0 + IN.uv.z * 90.0);
+            a = lerp(a, ring * ring * lerp(0.15, 1.0, saturate(wave)), _Ring);
+
+            // thin rays around a soft glow, each with its own angle jitter, width, length, brightness and shimmer
+            // hashed from its index and the particle's random, so no two bursts or layers match. The ray count must
+            // be whole so the rays meet where atan2 wraps; the neighbours are summed so a wide ray never clips.
+            UNITY_BRANCH
+            if (_Rays > 0.0)
+            {
+                float seed = IN.uv.z * 91.7;
+                float t = (atan2(p.y, p.x) / 6.2831853 + 0.5) * _RayCount;
+                float cell = floor(t);
+                float sun = 0.0;
+                for (int k = -1; k <= 1; k++)
+                {
+                    float c = cell + k;
+                    float id = fmod(c + _RayCount, _RayCount);
+                    float2 h1 = Hash22(float2(id, seed));
+                    float2 h2 = Hash22(float2(id + 17.3, seed + 5.1));
+                    float d = (t - c - 0.5 - (h1.x - 0.5) * 0.7) / lerp(0.04, 0.17, h1.y * h1.y);
+                    float len = lerp(0.3, 1.0, h2.x);
+                    float shimmer = 0.7 + 0.3 * sin(_Time.y * lerp(1.5, 4.0, h2.y) + h1.x * 40.0);
+                    sun += exp(-d * d) * pow(saturate(1.0 - r / len), 1.5) * lerp(0.15, 1.0, h2.y * h2.y) * shimmer;
+                }
+                // thin rays and a tight glow keep the night dark between them instead of a grey haze
+                sun *= smoothstep(0.03, 0.2, r);
+                sun += exp(-r * r * 18.0) * 0.55;
+                a = lerp(a, saturate(sun), _Rays);
+            }
+
             half core = lerp(saturate(1.0 - r * 2.0), glow, _Star);
             half3 rgb = lerp(IN.color.rgb, half3(1, 1, 1), _Core * core);
 
@@ -134,6 +182,10 @@ Shader "HeronCase/SoftParticle"
             half3 foamRgb = lerp(IN.color.rgb * 0.85, lerp(IN.color.rgb, half3(1, 1, 1), 0.3), smoothstep(erode, erode + 0.3, field));
             rgb = lerp(rgb, foamRgb, _Foam);
             alpha = lerp(alpha, foamA, _Foam);
+
+            // each particle flickers at its own rate and phase
+            half flicker = 0.5 + 0.5 * sin(_Time.y * lerp(9.0, 20.0, IN.uv.z) + IN.uv.z * 60.0);
+            alpha *= lerp(1.0, 0.3 + 0.7 * flicker * flicker, _Twinkle);
             return half4(rgb, alpha);
         }
         ENDHLSL

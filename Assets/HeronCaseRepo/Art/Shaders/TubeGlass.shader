@@ -30,6 +30,16 @@ Shader "HeronCase/TubeGlass"
         // driven per tube from code: how far the glow is in, and the tube-local height of the liquid surface
         [PerRendererData] _Glow ("Glow", Range(0,1)) = 0
         [PerRendererData] _GlowLine ("Liquid Line", Float) = -10
+
+        [Header(Solved)]
+        _FlashRim ("Flash On Rim", Range(0,4)) = 1.4
+        // kept low: in linear space a little added white already turns the liquid pastel
+        _FlashFill ("Flash On Body", Range(0,2)) = 0.03
+        _ShineStrength ("Shine Strength", Range(0,2)) = 0.9
+        _ShineWidth ("Shine Width", Range(0.01,0.5)) = 0.16
+        // driven per tube from code: the flash when the cork snaps in, and how far the shine has run up (0..1)
+        [PerRendererData] _Flash ("Flash", Range(0,1)) = 0
+        [PerRendererData] _Shine ("Shine", Float) = -1
     }
 
     SubShader
@@ -94,6 +104,12 @@ Shader "HeronCase/TubeGlass"
             float  _GlowSpeed;
             half   _Glow;
             float  _GlowLine;
+            half   _FlashRim;
+            half   _FlashFill;
+            half   _ShineStrength;
+            half   _ShineWidth;
+            half   _Flash;
+            float  _Shine;
         CBUFFER_END
 
         Varyings vert(Attributes IN)
@@ -146,6 +162,13 @@ Shader "HeronCase/TubeGlass"
             float fade = lerp(0.5, 1.0, exp(-max(above, 0.0) / _GlowFade));
             float glow = _Glow * pulse * (rim * lerp(_GlowRimLow, _GlowRim * fade, empty) + inside * empty * fade * _GlowFill);
             rgb += _GlowColor.rgb * glow;
+
+            // solved: the whole bottle flashes when the cork snaps in, then one bright band of shine runs up over
+            // it, liquid and all, at the top of the hop
+            float shineCenter = lerp(-0.3, 2.2, saturate(_Shine));
+            float shine = (1.0 - smoothstep(0.0, _ShineWidth, abs(s - shineCenter))) * step(0.0, _Shine);
+            rgb += _GlowColor.rgb * _Flash * (rim * _FlashRim + inside * _FlashFill);
+            rgb += _SweepColor.rgb * shine * inside * _ShineStrength;
 
             return half4(rgb * IN.color.rgb, a) * IN.color.a;
         }

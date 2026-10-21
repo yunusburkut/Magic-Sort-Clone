@@ -30,6 +30,10 @@ Material:
     m_Ints: []
     m_Floats:
     - _BodyAlpha: 1
+    - _FlashFill: 0.03
+    - _FlashRim: 1.4
+    - _ShineStrength: 0.9
+    - _ShineWidth: 0.16
     - _RimAlpha: 1
     - _Reflection: 1
     - _SweepDuration: 1.6
