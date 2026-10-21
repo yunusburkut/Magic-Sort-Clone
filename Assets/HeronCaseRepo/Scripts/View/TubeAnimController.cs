@@ -14,6 +14,17 @@ public sealed class TubeAnimController
     private const float CapTilt = 16f;
     private const float GlowInDuration = 0.15f;
     private const float GlowOutDuration = 0.25f;
+    // the slide in: it arrives about halfway through, swings a touch past and settles
+    private const float TravelDamping = 0.7f;
+    private const float TravelFrequency = 1f;
+    // the mouth on its way to the pour swings past a little more, so the wait before the flow is a visible settle
+    private const float ReachDamping = 0.65f;
+    private const float ReachFrequency = 1f;
+    // back home the top rocks on the way it came and wobbles upright
+    private const float LandLean = 4f;
+    private const float LandWobbleDuration = 0.55f;
+    private const float WobbleDamping = 0.4f;
+    private const float WobbleFrequency = 2.2f;
 
     private readonly Transform _transform;
     private readonly Transform _body;
@@ -44,6 +55,9 @@ public sealed class TubeAnimController
     private readonly TweenCallback<float> _setLean;
     private readonly TweenCallback _landAfterPour;
     private readonly EaseFunction _settle;
+    private readonly EaseFunction _wobble;
+    private readonly SpringEase _travel;
+    private readonly SpringEase _reach;
 
     // the cork pushed into the mouth when the tube is solved; it pivots on its top edge. It falls behind the glass
     // as the whole cork and, once in, swaps to the seated sprite drawn over the glass with its hidden part faded.
@@ -100,6 +114,9 @@ public sealed class TubeAnimController
         _setCapSquash = SetCapSquash;
         _seatCap = SeatCap;
         _settle = new SpringEase(settings.SettleDamping, settings.SettleFrequency).Function;
+        _wobble = new SpringEase(WobbleDamping, WobbleFrequency).Function;
+        _travel = new SpringEase(TravelDamping, TravelFrequency);
+        _reach = new SpringEase(ReachDamping, ReachFrequency);
     }
 
     public void SetRestLocalPos(Vector3 pos)
@@ -212,7 +229,7 @@ public sealed class TubeAnimController
 
         _enterTween = _scope.Add(_transform.DOLocalMoveX(_restLocalPos.x, duration)
             .SetDelay(delay)
-            .SetEase(Ease.OutBack, 1.1f));
+            .SetEase(_travel.Function));
 
         _leanTween = _scope.Add(DOTween.Sequence()
             .AppendInterval(delay)
@@ -365,11 +382,18 @@ public sealed class TubeAnimController
         }
     }
 
-    // Runs on its own so the settle never holds up the pour completion.
+    // Runs on its own so the settle never holds up the pour completion: a soft squash, while the top rocks on the way
+    // the tube flew home and wobbles back upright.
     private void LandAfterPour()
     {
         _bodyTween?.Kill(false);
         _bodyTween = _scope.Add(Land(_stretch, Mathf.Lerp(1f, _settings.SquashLand, 0.5f)));
+
+        _leanTween?.Kill(false);
+        var lean = -Mathf.Sign(_restWorldPos.x - _flowEndPos.x) * LandLean;
+        _leanTween = _scope.Add(DOTween.Sequence()
+            .Append(LeanTo(_lean, lean, ImpactDuration * 1.5f, Ease.OutSine))
+            .Append(LeanTo(lean, 0f, LandWobbleDuration, _wobble)));
     }
 
     private Sequence Land(float from, float squash)
@@ -492,7 +516,8 @@ public sealed class TubeAnimController
     }
 
     // A short wind-up, then the tube tips over mouth first, as if a hand lifted it by the base: it turns about its
-    // mouth, so the base swings up, while the mouth glides over a low arc to the pour point.
+    // mouth, so the base swings up, while the mouth glides over a low arc to the pour point, swings a touch past it
+    // and settles.
     private void UpdateMove(float p)
     {
         var a = _windUpShare;
@@ -506,7 +531,7 @@ public sealed class TubeAnimController
         var q = Mathf.Clamp01((p - a) / (1f - a));
         var tilt = 1f - Mathf.Pow(1f - q, TipLead);
         var angle = Mathf.LerpUnclamped(_startAngle + _windUpLean, _tilts[0], tilt);
-        var mouth = QuadBezier(_mouthStart, _mouthArc, _anchor, EaseInOutSine(q));
+        var mouth = QuadBezier(_mouthStart, _mouthArc, _anchor, _reach.At(q));
         SetPose(PoseAround(mouth, angle), angle);
     }
 

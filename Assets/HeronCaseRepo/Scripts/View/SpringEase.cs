@@ -8,6 +8,8 @@ using UnityEngine;
 public sealed class SpringEase
 {
     private const int Samples = 64;
+    // share of the tween after which any leftover swing is faded out
+    private const float TailStart = 0.6f;
 
     private readonly float[] _table = new float[Samples + 1];
 
@@ -23,10 +25,19 @@ public sealed class SpringEase
             MMMaths.Spring(ref value, 1f, ref velocity, damping, frequency, 1f / Samples);
         }
 
-        // the spring is all but still by the end; land exactly on the target
-        _table[Samples] = 1f;
+        // the spring is all but still by the end; fade what is left of it out over the tail so it lands exactly on the
+        // target without a pop
+        var rest = 1f - _table[Samples];
+        for (var i = 0; i <= Samples; i++)
+        {
+            _table[i] += rest * Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(TailStart, 1f, (float)i / Samples));
+        }
+
         Function = Evaluate;
     }
+
+    // the eased value at t (0..1), for paths driven by hand
+    public float At(float t) => Evaluate(t, 1f, 0f, 0f);
 
     private float Evaluate(float time, float duration, float overshootOrAmplitude, float period)
     {

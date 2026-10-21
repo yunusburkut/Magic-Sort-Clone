@@ -29,16 +29,16 @@ MonoBehaviour:
   _liftDuration: 0.14
   _anticipationDip: 0.08
   _anticipationDuration: 0.05
-  _pourWindUpDuration: 0.06
+  _pourWindUpDuration: 0.07
   _pourWindUpDistance: 0.3
   _pourWindUpLean: 6
-  _pourMoveDuration: 0.18
-  _pourFlowBaseDuration: 0.2
-  _pourFlowDurationPerSlot: 0.24
+  _pourMoveDuration: 0.26
+  _pourFlowBaseDuration: 0.32
+  _pourFlowDurationPerSlot: 0.3
   _pourFlowSlotExponent: 0.85
   _pourFlowSpeedUp: 1.35
   _pourFlowRise: 0.2
-  _pourReturnDuration: 0.22
+  _pourReturnDuration: 0.26
   _pourArcHeight: 1.5
   _pourLipHeight: 1
   _pourLipSideOffset: 0.15
@@ -81,8 +81,8 @@ MonoBehaviour:
   _capDropDuration: 0.1
   _capSnapSquash: 0.8
   _capSnapDuration: 0.3
-  _enterDuration: 0.5
-  _enterStaggerDelay: 0.06
+  _enterDuration: 0.65
+  _enterStaggerDelay: 0.05
   _cloakAnticipationDip: 0.15
   _cloakAnticipationDuration: 0.1
   _cloakAnticipationSquashX: 1.1
