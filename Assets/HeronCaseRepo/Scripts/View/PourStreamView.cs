@@ -9,6 +9,9 @@ public sealed class PourStreamView : MonoBehaviour
 {
     private const int Segments = 28;
     private const int SplashOrderOffset = 5;
+    // share of the pour over which the stream swells to full, and from which it thins out again
+    private const float SwellUntil = 0.15f;
+    private const float ThinFrom = 0.75f;
 
     private static readonly int CapsId = Shader.PropertyToID("_Caps");
     private static readonly int SoftnessId = Shader.PropertyToID("_Softness");
@@ -48,6 +51,8 @@ public sealed class PourStreamView : MonoBehaviour
     private float _headTime;
     private float _tailTime;
     private float _flow;
+    private float _progress;
+    private float _strength;
     private float _unit;
     private Vector3 _p0, _p1, _p2, _p3;
 
@@ -110,6 +115,8 @@ public sealed class PourStreamView : MonoBehaviour
         _headTime = 0f;
         _tailTime = 0f;
         _flow = 0f;
+        _progress = 0f;
+        _strength = 0f;
         _foamDebt = 0f;
         _sprayDebt = 0f;
         _targetPos = target.transform.position;
@@ -130,6 +137,12 @@ public sealed class PourStreamView : MonoBehaviour
         if (_active) _ending = true;
     }
 
+    // Share of the poured liquid that has left the source so far, which shapes how thick the stream runs.
+    public void SetProgress(float progress)
+    {
+        _progress = progress;
+    }
+
     private void LateUpdate()
     {
         FollowTarget();
@@ -140,6 +153,7 @@ public sealed class PourStreamView : MonoBehaviour
         _unit = Mathf.Abs(transform.lossyScale.x);
         _headTime = Mathf.Min(1f, _headTime + dt / fall);
         _flow = Mathf.MoveTowards(_flow, _ending ? 0.75f : 1f, dt / 0.08f);
+        _strength = _flow * Thickness(_progress);
         if (_ending) _tailTime = Mathf.Min(1f, _tailTime + dt / fall);
 
         // falling accelerates, so the ends ease in
@@ -153,11 +167,11 @@ public sealed class PourStreamView : MonoBehaviour
         var landed = _headTime >= 1f && _tailTime < 1f;
         if (landed)
         {
-            _target.SetImpact(_p3, _flow);
+            _target.SetImpact(_p3, _strength);
             // froth slides out sideways along the surface, like the white water at the foot of a waterfall
-            Emit(_foam, ref _foamDebt, _settings.SplashFoamRate * _flow * dt, new Vector2(84f, 90f), new Vector2(0.7f, 1.2f), new Vector2(0.05f, 0.15f), false);
+            Emit(_foam, ref _foamDebt, _settings.SplashFoamRate * _strength * dt, new Vector2(84f, 90f), new Vector2(0.7f, 1.2f), new Vector2(0.05f, 0.15f), false);
             // the drops leave from the rim of the stream and arc outward, so they read against it instead of inside it
-            Emit(_spray, ref _sprayDebt, _settings.SplashSprayRate * _flow * dt, new Vector2(8f, 22f), new Vector2(1.4f, 1.8f), new Vector2(0.18f, 0.26f), true);
+            Emit(_spray, ref _sprayDebt, _settings.SplashSprayRate * _strength * dt, new Vector2(8f, 22f), new Vector2(1.4f, 1.8f), new Vector2(0.18f, 0.26f), true);
         }
 
         _renderer.GetPropertyBlock(_mpb);
@@ -197,6 +211,14 @@ public sealed class PourStreamView : MonoBehaviour
         if (shift.sqrMagnitude < 1e-8f) return;
         Shift(_foam, shift);
         Shift(_spray, shift);
+    }
+
+    // Thin while the first of the liquid tips over the lip, full through the middle, thinning again as the pour runs out.
+    private float Thickness(float progress)
+    {
+        var swell = Mathf.SmoothStep(0f, 1f, progress / SwellUntil);
+        var dry = Mathf.SmoothStep(0f, 1f, (progress - ThinFrom) / (1f - ThinFrom));
+        return Mathf.Lerp(_settings.StreamStartThin, 1f, swell) * Mathf.Lerp(1f, _settings.StreamEndThin, dry);
     }
 
     // height of the target's surface above its pivot, at its center
@@ -295,7 +317,7 @@ public sealed class PourStreamView : MonoBehaviour
             var normal = new Vector3(-tan.y, tan.x, 0f);
 
             // a wide sheet over the lip that narrows as it speeds up
-            var hw = Mathf.Lerp(_settings.StreamLipWidth, _settings.StreamEndWidth, Mathf.SmoothStep(0f, 1f, s / 0.4f)) * 0.5f * _flow;
+            var hw = Mathf.Lerp(_settings.StreamLipWidth, _settings.StreamEndWidth, Mathf.SmoothStep(0f, 1f, s / 0.4f)) * 0.5f * _strength;
             const float pad = 1.15f;
 
             var dist = s * length * invUnit;

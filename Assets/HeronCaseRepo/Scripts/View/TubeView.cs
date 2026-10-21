@@ -196,6 +196,7 @@ public class TubeView : MonoBehaviour, IPointerClickHandler
     {
         _liquid.SetDrained(poured);
         _pourTarget._liquid.SetFilled(poured);
+        _stream.SetProgress(poured / Mathf.Max(1, _pourAmount));
     }
 
     private void OnPourFlowEnd()

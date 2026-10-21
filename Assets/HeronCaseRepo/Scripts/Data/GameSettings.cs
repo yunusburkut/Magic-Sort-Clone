@@ -51,6 +51,8 @@ public class GameSettings : ScriptableObject
     [SerializeField] private float _streamEndWidth = 0.36f;
     [SerializeField] private float _streamFallDuration = 0.13f;
     [SerializeField] private float _streamMouthMargin = 0.2f;
+    [SerializeField] private float _streamStartThin = 0.4f;
+    [SerializeField] private float _streamEndThin = 0.45f;
     [SerializeField, FormerlySerializedAs("_splashMistRate")] private float _splashFoamRate = 16f;
     [SerializeField] private float _splashSprayRate = 9f;
 
@@ -146,6 +148,8 @@ public class GameSettings : ScriptableObject
     public float StreamEndWidth => _streamEndWidth;
     public float StreamFallDuration => _streamFallDuration;
     public float StreamMouthMargin => _streamMouthMargin;
+    public float StreamStartThin => _streamStartThin;
+    public float StreamEndThin => _streamEndThin;
     public float SplashFoamRate => _splashFoamRate;
     public float SplashSprayRate => _splashSprayRate;
     public float SquashCrouch => _squashCrouch;
