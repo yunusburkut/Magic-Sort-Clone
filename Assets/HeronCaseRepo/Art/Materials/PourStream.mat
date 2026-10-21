@@ -27,7 +27,7 @@ Material:
     m_Floats:
     - _BackShineStrength: 0.08
     - _Lighten: 0.05
-    - _Saturation: 1.2
+    - _Saturation: 1
     - _ShineStrength: 0.3
     - _StreakStrength: 0.2
     m_Colors: []

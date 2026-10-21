@@ -7,7 +7,8 @@ public class GameSettings : ScriptableObject
     [Header("Water Layout")]
     [SerializeField, FormerlySerializedAs("waterSlotHeight")] private float _waterSlotHeight = 0.5f;
     [SerializeField, FormerlySerializedAs("waterRevealDuration")] private float _waterRevealDuration = 0.3f;
-    [SerializeField] private Color _hiddenLiquidColor = new Color(0.0566f, 0.0566f, 0.0566f, 1f);
+    // a dull blue-grey, darker than every liquid, so a hidden layer reads as unknown rather than as a hole
+    [SerializeField] private Color _hiddenLiquidColor = new Color(0.2431f, 0.2431f, 0.2784f, 1f);
 
     [Header("Liquid Slosh")]
     [SerializeField] private float _sloshFrequency = 1.6f;

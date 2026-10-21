@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GameSettings
   _waterSlotHeight: 1
   _waterRevealDuration: 0.3
-  _hiddenLiquidColor: {r: 0.05660379, g: 0.05660379, b: 0.05660379, a: 1}
+  _hiddenLiquidColor: {r: 0.24313726, g: 0.24313726, b: 0.2784314, a: 1}
   _sloshFrequency: 1.6
   _sloshDamping: 0.12
   _sloshAccelGain: 0.15

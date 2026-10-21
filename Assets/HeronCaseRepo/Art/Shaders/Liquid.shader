@@ -12,7 +12,7 @@ Shader "HeronCase/Liquid"
     Properties
     {
         [Header(Color)]
-        _Saturation ("Saturation", Range(0,2)) = 1.2
+        _Saturation ("Saturation", Range(0,2)) = 1
         _Brightness ("Brightness", Range(0.5,2)) = 1.05
         _SideDarken ("Side Darken", Range(0,1)) = 0.3
         _BottomDarken ("Bottom Darken", Range(0,1)) = 0.16

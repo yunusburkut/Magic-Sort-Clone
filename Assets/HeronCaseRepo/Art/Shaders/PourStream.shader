@@ -19,7 +19,7 @@ Shader "HeronCase/PourStream"
         _HeadFadeLength ("Head Fade Length", Float) = 0.18
 
         [Header(Casual Color)]
-        _Saturation ("Saturation", Range(0,2)) = 1.2
+        _Saturation ("Saturation", Range(0,2)) = 1
         _Brightness ("Brightness", Range(0.5,2)) = 1.05
         _EdgeDarken ("Edge Darken", Range(0,1)) = 0.18
         _Lighten ("Lighten (matches liquid seen through the glass, linear)", Range(0,1)) = 0.13

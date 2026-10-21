@@ -32,7 +32,7 @@ Material:
     - _FoamStrength: 0.5
     - _LayerLine: 0.08
     - _RimStrength: 0.35
-    - _Saturation: 1.2
+    - _Saturation: 1
     - _ShineStrength: 0.14
     - _SplashWhite: 0.3
     m_Colors: []
