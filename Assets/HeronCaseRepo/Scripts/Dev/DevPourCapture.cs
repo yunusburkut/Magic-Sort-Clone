@@ -334,6 +334,9 @@ public sealed class DevPourCapture : MonoBehaviour
         FixParticleSeeds();
         // real clicks in the Game view while the editor gets focus would select tubes mid-capture
         if (EventSystem.current != null) EventSystem.current.enabled = false;
+        // or leave rings; the scripted taps still play theirs
+        _ripple = FindFirstObjectByType<TapRippleView>();
+        if (_ripple != null) _ripple.enabled = false;
         for (var i = 0; i < 10; i++)
         {
             yield return Frames(3);
@@ -354,7 +357,7 @@ public sealed class DevPourCapture : MonoBehaviour
         }
 
         _log.AppendLine($"Pour {from.name} -> {to.name}");
-        EventBus<TubeClickedEvent>.Publish(new TubeClickedEvent { Tube = from });
+        Tap(from);
         for (var i = 0; i < 8; i++)
         {
             yield return Frames(1);
@@ -364,7 +367,7 @@ public sealed class DevPourCapture : MonoBehaviour
         yield return s_endOfFrame;
         Capture("selected");
         _pourStartedAt = Time.time;
-        EventBus<TubeClickedEvent>.Publish(new TubeClickedEvent { Tube = to });
+        Tap(to);
 
         for (var i = 0; i < 40; i++)
         {
@@ -398,9 +401,9 @@ public sealed class DevPourCapture : MonoBehaviour
 
         if (TryFindPour(out from, out to))
         {
-            EventBus<TubeClickedEvent>.Publish(new TubeClickedEvent { Tube = from });
+            Tap(from);
             yield return Frames(12);
-            EventBus<TubeClickedEvent>.Publish(new TubeClickedEvent { Tube = to });
+            Tap(to);
             StartCoroutine(CoverageAfter(15, "pour"));
             yield return Bench("pour", 60);
         }
@@ -414,6 +417,15 @@ public sealed class DevPourCapture : MonoBehaviour
             yield return Bench("solved", 45);
         }
         Finish();
+    }
+
+    private TapRippleView _ripple;
+
+    // what a finger on the tube does: the click it publishes and the ring it leaves
+    private void Tap(TubeView tube)
+    {
+        if (_ripple != null) _ripple.Play(Camera.main.WorldToScreenPoint(tube.transform.position));
+        EventBus<TubeClickedEvent>.Publish(new TubeClickedEvent { Tube = tube });
     }
 
     private static IEnumerator Frames(int count)
@@ -522,7 +534,7 @@ public sealed class DevPourCapture : MonoBehaviour
         if (_probed) return;
         _probed = true;
         _log.AppendLine($"Flow ended {Time.time - _pourStartedAt:0.00}s after the pour tap; tapping {e.To.name}");
-        EventBus<TubeClickedEvent>.Publish(new TubeClickedEvent { Tube = e.To });
+        Tap(e.To);
         StartCoroutine(ReportLift(e.To));
     }
 
