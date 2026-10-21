@@ -25,6 +25,8 @@ Material:
     m_TexEnvs: []
     m_Ints: []
     m_Floats:
+    - _BubbleDensity: 0.3
+    - _BubbleSize: 0.2
     - _FaceLighten: 0.1
     - _LayerLine: 0.08
     - _RimStrength: 0.35

@@ -44,8 +44,8 @@ MonoBehaviour:
   _streamEndWidth: 0.36
   _streamFallDuration: 0.13
   _streamMouthMargin: 0.2
-  _splashMistRate: 34
-  _splashSprayRate: 40
+  _splashMistRate: 12
+  _splashSprayRate: 14
   _squashCrouch: 0.93
   _squashJumpStretch: 1.05
   _squashFallStretch: 1.03

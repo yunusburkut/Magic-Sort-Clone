@@ -12,6 +12,7 @@ public sealed class PourStreamView : MonoBehaviour
     private static readonly int CapsId = Shader.PropertyToID("_Caps");
     private static readonly int SoftnessId = Shader.PropertyToID("_Softness");
     private static readonly int CoreId = Shader.PropertyToID("_Core");
+    private static readonly int DropletId = Shader.PropertyToID("_Droplet");
 
     private GameSettings _settings;
     private TubeLiquid _source;
@@ -37,6 +38,7 @@ public sealed class PourStreamView : MonoBehaviour
     private float _mistDebt;
     private float _sprayDebt;
     private Vector3 _targetPos;
+    private float _targetLevel;
 
     private bool _active;
     private bool _ending;
@@ -76,13 +78,13 @@ public sealed class PourStreamView : MonoBehaviour
         GetComponent<MeshFilter>().sharedMesh = _mesh;
 
         _mistMaterial = new Material(splashMaterial);
-        _mistMaterial.SetFloat(SoftnessId, 0.9f);
+        _mistMaterial.SetFloat(SoftnessId, 1f);
         _sprayMaterial = new Material(splashMaterial);
-        _sprayMaterial.SetFloat(SoftnessId, 0.25f);
-        _sprayMaterial.SetFloat(CoreId, 0.15f);
+        _sprayMaterial.SetFloat(SoftnessId, 0.2f);
+        _sprayMaterial.SetFloat(DropletId, 1f);
 
         _mist = CreateMist(sortingOrder + MistOrderOffset);
-        _spray = CreateSpray(sortingOrder + MistOrderOffset);
+        _spray = CreateSpray(sortingOrder + MistOrderOffset + 1);
     }
 
     private void OnDestroy()
@@ -107,15 +109,17 @@ public sealed class PourStreamView : MonoBehaviour
         _mistDebt = 0f;
         _sprayDebt = 0f;
         _targetPos = target.transform.position;
+        _targetLevel = SurfaceLevel();
         _unit = Mathf.Abs(transform.lossyScale.x);
         BuildCurve(out _p0, out _p1, out _p2, out _p3);
         _renderer.enabled = true;
 
-        // the splash is the poured liquid, so it takes its color instead of white
+        // the splash is the poured liquid, so it takes its color instead of white; the vapor is a paler haze of it
         var spray = _spray.main;
-        spray.startColor = new ParticleSystem.MinMaxGradient(color, Color.Lerp(color, Color.white, 0.15f));
+        spray.startColor = new ParticleSystem.MinMaxGradient(Color.Lerp(color, Color.white, 0.15f), Color.Lerp(color, Color.white, 0.3f));
         var mist = _mist.main;
-        mist.startColor = new Color(color.r, color.g, color.b, 0.75f);
+        var haze = Color.Lerp(color, Color.white, 0.6f);
+        mist.startColor = new Color(haze.r, haze.g, haze.b, 0.75f);
     }
 
     public void End()
@@ -147,8 +151,9 @@ public sealed class PourStreamView : MonoBehaviour
         if (landed)
         {
             _target.SetImpact(_p3, _flow);
-            Emit(_mist, ref _mistDebt, _settings.SplashMistRate * _flow * dt, 35f, 0.25f, 0.7f, 0.1f);
-            Emit(_spray, ref _sprayDebt, _settings.SplashSprayRate * _flow * dt, 22f, 1f, 1.8f, 0.06f);
+            Emit(_mist, ref _mistDebt, _settings.SplashMistRate * _flow * dt, new Vector2(0f, 50f), new Vector2(0.3f, 0.6f), new Vector2(0f, 0.18f), false);
+            // the drops leave from the rim of the stream and arc outward, so they read against it instead of inside it
+            Emit(_spray, ref _sprayDebt, _settings.SplashSprayRate * _flow * dt, new Vector2(4f, 12f), new Vector2(1.8f, 2.5f), new Vector2(0.2f, 0.3f), true);
         }
 
         _renderer.GetPropertyBlock(_mpb);
@@ -163,7 +168,8 @@ public sealed class PourStreamView : MonoBehaviour
     }
 
     // The target can be picked up again the moment the pour ends; the loose end of the stream and the splash
-    // still in the air ride along with it instead of hanging where its liquid used to be.
+    // still in the air ride along with it instead of hanging where its liquid used to be. The splash also rides
+    // up with the filling surface, which rises much faster than the vapor, so it is not swallowed by the liquid.
     private void FollowTarget()
     {
         if (_target == null) return;
@@ -171,9 +177,11 @@ public sealed class PourStreamView : MonoBehaviour
         var pos = _target.transform.position;
         var delta = pos - _targetPos;
         _targetPos = pos;
-        if (delta.sqrMagnitude < 1e-8f) return;
+        var level = SurfaceLevel();
+        var rise = level - _targetLevel;
+        _targetLevel = level;
 
-        if (_ending)
+        if (_ending && delta.sqrMagnitude > 1e-8f)
         {
             _p0 += delta;
             _p1 += delta;
@@ -181,9 +189,14 @@ public sealed class PourStreamView : MonoBehaviour
             _p3 += delta;
         }
 
-        Shift(_mist, delta);
-        Shift(_spray, delta);
+        var shift = delta + Vector3.up * rise;
+        if (shift.sqrMagnitude < 1e-8f) return;
+        Shift(_mist, shift);
+        Shift(_spray, shift);
     }
+
+    // height of the target's surface above its pivot, at its center
+    private float SurfaceLevel() => _target.SurfaceWorld(_targetPos.x, 0f).y - _targetPos.y;
 
     private void Shift(ParticleSystem ps, Vector3 delta)
     {
@@ -198,7 +211,10 @@ public sealed class PourStreamView : MonoBehaviour
 
     // Emitted by hand at the landing point: the systems ride on the source tube, which is already swinging back
     // when the particle update runs, so their own emitters would scatter drops along its path.
-    private void Emit(ParticleSystem ps, ref float debt, float count, float coneDeg, float minSpeed, float maxSpeed, float radius)
+    // Each particle starts on a random side of the landing point, offset (min, max) away from it, and flies outward
+    // at angle (min, max) degrees off vertical. A hop particle lives exactly as long as its arc, so a drop lands
+    // back on the surface instead of sinking through the liquid or vanishing in mid air.
+    private void Emit(ParticleSystem ps, ref float debt, float count, Vector2 angle, Vector2 speed, Vector2 offset, bool hop)
     {
         debt += count;
         var n = (int)debt;
@@ -206,13 +222,18 @@ public sealed class PourStreamView : MonoBehaviour
         debt -= n;
         if (!ps.isPlaying) ps.Play();
 
-        var size = ps.main.startSize;
+        var main = ps.main;
+        var size = main.startSize;
+        var gravity = -Physics.gravity.y * main.gravityModifier.constant;
         for (var i = 0; i < n; i++)
         {
-            var a = Random.Range(-coneDeg, coneDeg) * Mathf.Deg2Rad;
-            _emit.position = _p3 + new Vector3(Random.Range(-radius, radius) * _unit, 0f, 0f);
-            _emit.velocity = new Vector3(Mathf.Sin(a), Mathf.Cos(a), 0f) * (Random.Range(minSpeed, maxSpeed) * _unit);
+            var side = Random.value < 0.5f ? -1f : 1f;
+            var a = side * Random.Range(angle.x, angle.y) * Mathf.Deg2Rad;
+            _emit.position = _p3 + new Vector3(side * Random.Range(offset.x, offset.y) * _unit, 0f, 0f);
+            _emit.velocity = new Vector3(Mathf.Sin(a), Mathf.Cos(a), 0f) * (Random.Range(speed.x, speed.y) * _unit);
             _emit.startSize = Random.Range(size.constantMin, size.constantMax) * _unit;
+            if (hop && gravity > 0f) _emit.startLifetime = 2f * _emit.velocity.y / gravity;
+            else _emit.ResetStartLifetime();
             ps.Emit(_emit, 1);
         }
     }
@@ -299,29 +320,30 @@ public sealed class PourStreamView : MonoBehaviour
         var ps = CreateSystem("SplashMist", _mistMaterial, sortingOrder);
 
         var main = ps.main;
-        main.startLifetime = new ParticleSystem.MinMaxCurve(0.45f, 0.8f);
-        main.startSize = new ParticleSystem.MinMaxCurve(0.3f, 0.55f);
+        // soft vapor that puffs up slowly and spreads out while it fades
+        main.startLifetime = new ParticleSystem.MinMaxCurve(0.7f, 1.1f);
+        main.startSize = new ParticleSystem.MinMaxCurve(0.4f, 0.7f);
         main.startRotation = new ParticleSystem.MinMaxCurve(0f, Mathf.PI * 2f);
         main.startColor = new Color(1f, 1f, 1f, 0.75f);
-        main.gravityModifier = -0.02f;
+        main.gravityModifier = -0.1f;
         main.maxParticles = 64;
 
         var size = ps.sizeOverLifetime;
         size.enabled = true;
-        size.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.Linear(0f, 0.6f, 1f, 1.6f));
+        size.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.EaseInOut(0f, 0.6f, 1f, 1.8f));
 
         var color = ps.colorOverLifetime;
         color.enabled = true;
         var gradient = new Gradient();
         gradient.SetKeys(
             new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
-            new[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(0.8f, 0.15f), new GradientAlphaKey(0f, 1f) });
+            new[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(0.8f, 0.2f), new GradientAlphaKey(0f, 1f) });
         color.color = gradient;
 
         var limit = ps.limitVelocityOverLifetime;
         limit.enabled = true;
-        limit.dampen = 0.15f;
-        limit.limit = 0.2f;
+        limit.dampen = 0.1f;
+        limit.limit = 0.55f;
 
         return ps;
     }
@@ -331,19 +353,25 @@ public sealed class PourStreamView : MonoBehaviour
         var ps = CreateSystem("SplashSpray", _sprayMaterial, sortingOrder);
 
         var main = ps.main;
-        // about one hop: the drops land back on the surface instead of sinking through the liquid
-        main.startLifetime = new ParticleSystem.MinMaxCurve(0.22f, 0.32f);
-        main.startSize = new ParticleSystem.MinMaxCurve(0.04f, 0.09f);
-        main.gravityModifier = 1.2f;
-        main.maxParticles = 80;
+        // the lifetime is set per drop to its hop, see Emit
+        main.startLifetime = 0.4f;
+        main.startSize = new ParticleSystem.MinMaxCurve(0.1f, 0.17f);
+        main.gravityModifier = 0.8f;
+        main.maxParticles = 48;
 
         var color = ps.colorOverLifetime;
         color.enabled = true;
         var gradient = new Gradient();
         gradient.SetKeys(
             new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
-            new[] { new GradientAlphaKey(1f, 0f), new GradientAlphaKey(1f, 0.6f), new GradientAlphaKey(0f, 1f) });
+            new[] { new GradientAlphaKey(1f, 0f), new GradientAlphaKey(1f, 0.8f), new GradientAlphaKey(0f, 1f) });
         color.color = gradient;
+
+        // round at the top of the hop, drawn out into a drop while it flies fast
+        var psRenderer = ps.GetComponent<ParticleSystemRenderer>();
+        psRenderer.renderMode = ParticleSystemRenderMode.Stretch;
+        psRenderer.lengthScale = 1f;
+        psRenderer.velocityScale = 0.06f;
 
         return ps;
     }

@@ -1,12 +1,14 @@
 Shader "HeronCase/SoftParticle"
 {
-    // Round particle with a soft edge, colored by the particle color. Used for the splash mist and droplets.
+    // Round particle with a soft edge, colored by the particle color. Used for the splash mist and droplets;
+    // _Droplet shades it as a small lit drop of water.
     // _Star turns it into a four-point twinkle, and _DstBlend One makes it additive for the solved sparks.
     Properties
     {
         _Softness ("Edge Softness", Range(0.01,1)) = 0.6
         _Core ("Bright Core", Range(0,1)) = 0.0
         _Star ("Star Rays", Range(0,1)) = 0.0
+        _Droplet ("Water Drop Shading", Range(0,1)) = 0.0
         [Enum(UnityEngine.Rendering.BlendMode)] _DstBlend ("Dst Blend", Float) = 10
     }
 
@@ -48,6 +50,7 @@ Shader "HeronCase/SoftParticle"
             half _Softness;
             half _Core;
             half _Star;
+            half _Droplet;
             half _DstBlend;
         CBUFFER_END
 
@@ -80,6 +83,12 @@ Shader "HeronCase/SoftParticle"
 
             half core = lerp(saturate(1.0 - r * 2.0), glow, _Star);
             half3 rgb = lerp(IN.color.rgb, half3(1, 1, 1), _Core * core);
+
+            // a lit drop of water: deeper color toward the rim and a small highlight toward the upper left
+            float2 hp = p - float2(-0.3, 0.35);
+            half3 drop = saturate(IN.color.rgb * lerp(1.15, 0.65, r * r));
+            drop = lerp(drop, half3(1, 1, 1), exp(-dot(hp, hp) * 20.0) * 0.85);
+            rgb = lerp(rgb, drop, _Droplet);
             return half4(rgb, a * IN.color.a);
         }
         ENDHLSL
