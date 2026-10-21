@@ -21,13 +21,21 @@ MonoBehaviour:
     modifier: 0
     cloakTriggerColor: 0
     waters:
-    - color: 2
+    - color: 0
       modifier: 0
     - color: 0
       modifier: 0
-    - color: 2
+    - color: 0
       modifier: 0
+  - capacity: 4
+    modifier: 0
+    cloakTriggerColor: 0
+    waters:
     - color: 1
+      modifier: 0
+    - color: 3
+      modifier: 0
+    - color: 0
       modifier: 0
   - capacity: 4
     modifier: 0
@@ -35,9 +43,9 @@ MonoBehaviour:
     waters:
     - color: 3
       modifier: 0
-    - color: 3
+    - color: 2
       modifier: 0
-    - color: 0
+    - color: 1
       modifier: 0
     - color: 2
       modifier: 0
@@ -47,9 +55,9 @@ MonoBehaviour:
     waters:
     - color: 2
       modifier: 0
-    - color: 0
-      modifier: 0
     - color: 1
+      modifier: 0
+    - color: 3
       modifier: 0
     - color: 1
       modifier: 0
@@ -57,13 +65,9 @@ MonoBehaviour:
     modifier: 0
     cloakTriggerColor: 0
     waters:
-    - color: 3
-      modifier: 0
-    - color: 1
+    - color: 2
       modifier: 0
     - color: 3
-      modifier: 0
-    - color: 0
       modifier: 0
   - capacity: 4
     modifier: 0
