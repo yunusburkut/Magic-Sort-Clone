@@ -9,6 +9,7 @@ public class WaterView : MonoBehaviour
     [SerializeField] private Color hiddenColor;
 
     private static readonly int RevealAmountId = Shader.PropertyToID("_RevealAmount");
+    private static readonly int SurfaceId = Shader.PropertyToID("_Surface");
     private MaterialPropertyBlock _mpb;
     private float _revealAmount = 1f;
     private TweenScope _scope;
@@ -70,6 +71,13 @@ public class WaterView : MonoBehaviour
         _revealAmount = amount;
         spriteRenderer.GetPropertyBlock(_mpb);
         _mpb.SetFloat(RevealAmountId, _revealAmount);
+        spriteRenderer.SetPropertyBlock(_mpb);
+    }
+
+    public void SetSurface(bool isSurface)
+    {
+        spriteRenderer.GetPropertyBlock(_mpb);
+        _mpb.SetFloat(SurfaceId, isSurface ? 1f : 0f);
         spriteRenderer.SetPropertyBlock(_mpb);
     }
 

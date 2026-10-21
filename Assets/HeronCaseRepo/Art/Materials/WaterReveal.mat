@@ -29,10 +29,25 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
+    - _BottomShade: 0.82
+    - _Brightness: 1.12
+    - _BubbleScale: 4
+    - _BubbleSpeed: 0.35
+    - _BubbleStrength: 0.35
     - _ConcaveDepth: 0.1
-    - _EdgeSoftness: 0
+    - _MeniscusStrength: 0.6
     - _RevealAmount: 1
+    - _RimDarken: 0.18
+    - _RippleFreq: 18
+    - _RippleSpeed: 2.2
+    - _Saturation: 1.15
+    - _ShinePos: 0.2
+    - _ShineStrength: 0.45
+    - _ShineWidth: 0.055
+    - _Surface: 0
+    - _SurfaceGlow: 0.28
     m_Colors:
     - _Color: {r: 1, g: 1, b: 1, a: 1}
+    - _ShineColor: {r: 1, g: 1, b: 1, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1

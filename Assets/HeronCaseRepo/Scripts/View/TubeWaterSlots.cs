@@ -76,6 +76,7 @@ public sealed class TubeWaterSlots
 
         _colorSet.Add(color);
         _segments.Add(seg);
+        RefreshSurfaces();
     }
 
     public void AddWaters(Color color, int count)
@@ -101,6 +102,7 @@ public sealed class TubeWaterSlots
         seg.View.AnimateHeightTo(SegHeight(count), SegCenterY(slotIndex, count), totalDuration);
         _colorSet.Add(color);
         _segments.Add(seg);
+        RefreshSurfaces();
     }
 
     public void RemoveTopWaters(int count)
@@ -123,6 +125,7 @@ public sealed class TubeWaterSlots
             top.View.AnimateHeightTo(0f, SegCenterY(top.BaseSlot, 0), totalDuration)
                 .OnComplete(top.View.CachedDestroySelf);
             RevealTopWater();
+            RefreshSurfaces();
         }
     }
 
@@ -132,6 +135,16 @@ public sealed class TubeWaterSlots
         {
             _segments[_segments.Count - 1].IsHidden = false;
             _segments[_segments.Count - 1].View.SetHidden(false);
+        }
+    }
+
+    // Only the top segment shows the live surface (ripples + meniscus) in the WaterReveal shader.
+    private void RefreshSurfaces()
+    {
+        var last = _segments.Count - 1;
+        for (var i = 0; i <= last; i++)
+        {
+            _segments[i].View.SetSurface(i == last);
         }
     }
 
