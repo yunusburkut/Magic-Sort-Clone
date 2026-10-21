@@ -72,7 +72,7 @@ public class GameSettings : ScriptableObject
     [Header("Solved Animation")]
     [SerializeField, FormerlySerializedAs("solvedSquashY")] private float _solvedSquashY = 0.82f;
     [SerializeField, FormerlySerializedAs("solvedSquashDuration")] private float _solvedSquashDuration = 0.22f;
-    [SerializeField] private float _solvedChargeDuration = 0.16f;
+    [SerializeField] private float _solvedChargeDuration = 0.08f;
     [SerializeField] private float _solvedChargeTremble = 0.02f;
     [SerializeField] private float _solvedStretch = 1.12f;
     [SerializeField] private float _solvedHopHeight = 0.6f;

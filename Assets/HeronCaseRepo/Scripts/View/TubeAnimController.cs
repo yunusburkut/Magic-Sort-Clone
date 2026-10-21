@@ -5,7 +5,7 @@ public sealed class TubeAnimController
 {
     private const int TiltSamples = 9;
     private const float ImpactDuration = 0.08f;
-    private const int ChargeShakes = 2;
+    private const int ChargeShakes = 1;
 
     private readonly Transform _transform;
     private readonly Transform _body;

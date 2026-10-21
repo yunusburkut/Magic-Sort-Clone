@@ -63,7 +63,7 @@ MonoBehaviour:
   _shakeDecay2: 0.4
   _solvedSquashY: 0.82
   _solvedSquashDuration: 0.22
-  _solvedChargeDuration: 0.16
+  _solvedChargeDuration: 0.08
   _solvedChargeTremble: 0.02
   _solvedStretch: 1.12
   _solvedHopHeight: 0.6
