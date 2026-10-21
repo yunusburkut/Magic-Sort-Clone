@@ -19,21 +19,26 @@ public class TubeView : MonoBehaviour, IPointerClickHandler
     [SerializeField] private int streamSortingOrder = 20;
     [SerializeField] private int sparkSortingOrder = 45;
 
-    [Header("Cap (rendered on the bottle sprite's canvas, pivot on its top edge)")]
+    [Header("Cork (rendered on the bottle sprite's canvas, pivot on its top edge)")]
     [SerializeField] private Sprite capSprite;
+    // the cork once pushed in: the part behind the lip faded, drawn over the glass
+    [SerializeField] private Sprite capSeatedSprite;
     [SerializeField] private Material capMaterial;
     [SerializeField] private int capSortingOrder = 31;
 
-    [Header("Bottle Interior (tube-local, at the default capacity)")]
-    [SerializeField] private float bodyHalfWidth = 0.78f;
-    [SerializeField] private float neckHalfWidth = 0.47f;
-    [SerializeField] private float bottomY = -2.31f;
-    [SerializeField] private float bottomCurveHeight = 0.38f;
-    [SerializeField] private float shoulderY = 1.22f;
-    [SerializeField] private float neckY = 1.6f;
-    [SerializeField] private float lipY = 2.15f;
-    [SerializeField] private float ellipseRatio = 0.3f;
-    [SerializeField] private float bottomEllipseRatio = 0.12f;
+    // Fitted by Tools/AssetGen/make_assets.py: the glass silhouette shrunk by the same gap along the walls and under
+    // the bottom. The 9-sliced sprite only stretches its straight wall, so the bottom is measured from the sprite's
+    // bottom edge and the shoulder, neck and lip from its top edge.
+    [Header("Bottle Interior (tube-local)")]
+    [SerializeField] private float bodyHalfWidth = 0.806f;
+    [SerializeField] private float neckHalfWidth = 0.309f;
+    [SerializeField] private float bottomInset = 0.134f;
+    [SerializeField] private float bottomCurveHeight = 0.47f;
+    [SerializeField] private float shoulderDrop = 1.185f;
+    [SerializeField] private float neckDrop = 0.661f;
+    [SerializeField] private float lipDrop = 0.467f;
+    [SerializeField] private float ellipseRatio = 0.24f;
+    [SerializeField] private float bottomEllipseRatio = 0.24f;
 
     [Header("Settings")]
     [SerializeField] private GameSettings settings;
@@ -46,7 +51,6 @@ public class TubeView : MonoBehaviour, IPointerClickHandler
     private SpriteRenderer _cap;
     private bool _isSelected;
     private Vector3 _restLocalPos;
-    private float _baseTubeHeight;
 
     private Renderer[] _sortedRenderers;
     private int[] _baseSortingOrders;
@@ -92,7 +96,6 @@ public class TubeView : MonoBehaviour, IPointerClickHandler
         _cachedInvokeShakeComplete = InvokeShakeComplete;
         _cachedSolvedPeak = PlaySolvedSparks;
         _cachedPourLandHaptic = HapticService.PlayPourLand;
-        _baseTubeHeight = tubeRenderer.size.y;
 
         _liquid = CreateChild<TubeLiquid>("Liquid", body);
         _stream = CreateChild<PourStreamView>("PourStream", transform);
@@ -150,33 +153,31 @@ public class TubeView : MonoBehaviour, IPointerClickHandler
         }
     }
 
-    // The sliced bottle sprite is always shorter than its borders, so Unity scales the whole bottle vertically.
     private LiquidShape BuildLiquidShape()
     {
-        var v = tubeRenderer.size.y / _baseTubeHeight;
+        var half = tubeRenderer.size.y * 0.5f;
         return new LiquidShape
         {
             BodyHalfWidth = bodyHalfWidth,
             NeckHalfWidth = neckHalfWidth,
-            BottomY = bottomY * v,
-            BottomCurveHeight = bottomCurveHeight * v,
-            ShoulderY = shoulderY * v,
-            NeckY = neckY * v,
-            LipY = lipY * v,
+            BottomY = -half + bottomInset,
+            BottomCurveHeight = bottomCurveHeight,
+            ShoulderY = half - shoulderDrop,
+            NeckY = half - neckDrop,
+            LipY = half - lipDrop,
             EllipseRatio = ellipseRatio,
             BottomEllipseRatio = bottomEllipseRatio,
         };
     }
 
-    // The cap shares the bottle sprite's pixel grid, so it takes the scale the sliced bottle is drawn at and sits on
-    // the top edge of the bottle.
+    // The cork shares the bottle sprite's pixel grid and sits on its top edge, which the 9-slice never stretches.
     private void PlaceCap()
     {
-        var bottle = tubeRenderer.sprite;
         var size = tubeRenderer.size;
-        var ppu = capSprite.pixelsPerUnit;
-        var scale = new Vector3(size.x * ppu / bottle.rect.width, size.y * ppu / (bottle.border.y + bottle.border.w), 1f);
-        _anim.SetCap(_cap.transform, new Vector3(0f, size.y * 0.5f, 0f), scale, capSprite.bounds.size.y * scale.y);
+        var s = size.x * capSprite.pixelsPerUnit / tubeRenderer.sprite.rect.width;
+        var scale = new Vector3(s, s, 1f);
+        _anim.SetCap(_cap, capSeatedSprite, tubeRenderer.sortingOrder - 1, new Vector3(0f, size.y * 0.5f, 0f), scale,
+            capSprite.bounds.size.y * s);
     }
 
     // Everything but the stream draws in front of the other tubes while this one pours.
@@ -296,7 +297,6 @@ public class TubeView : MonoBehaviour, IPointerClickHandler
         EventBus<TubeSolvedEvent>.Publish(new TubeSolvedEvent { SolvedColor = TopColor });
         HapticService.PlayWin();
 
-        _cap.color = TopColor;
         return _anim.PlayMarkSolved(_cachedSolvedPeak);
     }
 

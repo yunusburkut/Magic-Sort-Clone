@@ -90,7 +90,7 @@ SpriteRenderer:
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 1
-  m_Size: {x: 2, y: 5}
+  m_Size: {x: 2, y: 4.47}
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
@@ -131,7 +131,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 2.16, y: 5.12}
+  m_SizeDelta: {x: 2.16, y: 4.59}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!212 &7953095362423038551
 SpriteRenderer:
@@ -187,7 +187,7 @@ SpriteRenderer:
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 1
-  m_Size: {x: 2, y: 5}
+  m_Size: {x: 2, y: 4.47}
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
@@ -212,6 +212,7 @@ MonoBehaviour:
   pourStreamMaterial: {fileID: 2100000, guid: ce7292fdcd77460da91734110c6cb641, type: 2}
   splashMaterial: {fileID: 2100000, guid: 933aff2b5a19463e8f64c3b12cb5fecc, type: 2}
   capSprite: {fileID: 21300000, guid: a62aebed39dcb2949fa4f242350f028d, type: 3}
+  capSeatedSprite: {fileID: 21300000, guid: 3602f954b6624f56b55a81bdcc6777a6, type: 3}
   capMaterial: {fileID: 10754, guid: 0000000000000000f000000000000000, type: 0}
   capSortingOrder: 31
   settings: {fileID: 11400000, guid: a7f20922a1f3e1840b6fdc4738dca336, type: 2}
@@ -260,7 +261,7 @@ BoxCollider2D:
     drawMode: 1
     adaptiveTiling: 0
   m_AutoTiling: 0
-  m_Size: {x: 2.16, y: 5.12}
+  m_Size: {x: 2.16, y: 4.59}
   m_EdgeRadius: 0
 --- !u!1 &4421987650312876501
 GameObject:
@@ -397,7 +398,7 @@ SpriteRenderer:
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 1
-  m_Size: {x: 3, y: 5}
+  m_Size: {x: 3, y: 4.47}
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1

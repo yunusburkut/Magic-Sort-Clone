@@ -5,7 +5,7 @@ using UnityEngine;
 public struct LiquidShape
 {
     // Matches BOTTOM_POWER in Liquid.shader: the bottom is a superellipse, between an ellipse and a rounded box.
-    public const float BottomPower = 2.3f;
+    public const float BottomPower = 2.1f;
     private const int BottomSegments = 6;
     public const int VertexCount = BottomSegments * 2 + 7;
 

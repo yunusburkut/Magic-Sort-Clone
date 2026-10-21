@@ -53,6 +53,7 @@ Shader "HeronCase/TubeGlass"
             float4 positionCS : SV_POSITION;
             float2 uv         : TEXCOORD0;
             float2 positionWS : TEXCOORD1;
+            float2 local      : TEXCOORD2;
             half4  color      : COLOR;
             UNITY_VERTEX_OUTPUT_STEREO
         };
@@ -81,6 +82,7 @@ Shader "HeronCase/TubeGlass"
             UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(OUT);
             OUT.positionCS = TransformObjectToHClip(IN.positionOS.xyz);
             OUT.positionWS = TransformObjectToWorld(IN.positionOS.xyz).xy;
+            OUT.local      = IN.positionOS.xy;
             OUT.uv         = IN.uv;
             OUT.color      = IN.color * _Color;
             return OUT;
@@ -102,9 +104,11 @@ Shader "HeronCase/TubeGlass"
             float a = saturate(tex.a * lerp(_BodyAlpha, _RimAlpha, rim));
 
             // diagonal shine sweep, staggered across the board by world x; it crosses in _SweepDuration and then rests
-            // off the tube for the rest of the period
+            // off the tube for the rest of the period. The 9-slice squeezes the uvs of the stretched wall, so the
+            // sweep runs in tube-local space, where a 2 x 6 tube spans 0..1.
             float phase = frac(_Time.y / _SweepPeriod + IN.positionWS.x * _SweepStagger);
-            float s = IN.uv.y + IN.uv.x * 0.45;
+            float2 sp = IN.local / float2(2.0, 6.0) + 0.5;
+            float s = sp.y + sp.x * 0.45;
             float center = lerp(-0.5, 2.2, saturate(phase * _SweepPeriod / max(_SweepDuration, 1e-3)));
             float sweep = (1.0 - smoothstep(0.0, _SweepWidth, abs(s - center))) * glass * _SweepStrength;
             rgb = lerp(rgb, _SweepColor.rgb, sweep);

@@ -8,8 +8,10 @@ public sealed class TubeAnimController
     private const int ChargeShakes = 1;
     // share of the travel over which the wind-up offset unwinds
     private const float WindUpRelease = 0.4f;
-    // share of the cap's pop-in it hangs over the mouth before it drops
+    // share of the cork's pop-in it hangs over the mouth before it drops
     private const float CapHang = 0.6f;
+    // the cork pops in tipped over and rights itself on the way down
+    private const float CapTilt = 16f;
 
     private readonly Transform _transform;
     private readonly Transform _body;
@@ -38,12 +40,19 @@ public sealed class TubeAnimController
     private readonly TweenCallback _landAfterPour;
     private readonly EaseFunction _settle;
 
-    // the cap that snaps on when the tube is solved; it pivots on its top edge
-    private Transform _cap;
+    // the cork pushed into the mouth when the tube is solved; it pivots on its top edge. It falls behind the glass
+    // as the whole cork and, once in, swaps to the seated sprite drawn over the glass with its hidden part faded.
+    private SpriteRenderer _cap;
+    private Transform _capTransform;
+    private Sprite _capFlightSprite;
+    private Sprite _capSeatedSprite;
+    private int _capFlightOrder;
+    private int _capSeatedOrder;
     private Vector3 _capRest;
     private Vector3 _capScale;
     private float _capHeight;
     private readonly TweenCallback<float> _setCapSquash;
+    private readonly TweenCallback _seatCap;
 
     // pour state, read by the cached tween updates
     private readonly float[] _tilts = new float[TiltSamples];
@@ -81,6 +90,7 @@ public sealed class TubeAnimController
         _setLean = SetLean;
         _landAfterPour = LandAfterPour;
         _setCapSquash = SetCapSquash;
+        _seatCap = SeatCap;
         _settle = new SpringEase(settings.SettleDamping, settings.SettleFrequency).Function;
     }
 
@@ -96,10 +106,16 @@ public sealed class TubeAnimController
         ApplyBody();
     }
 
-    // Body-local rest pose of the cap's top edge and its height there, so a squash keeps its bottom on the lip.
-    public void SetCap(Transform cap, Vector3 restLocalPos, Vector3 restScale, float height)
+    // Body-local rest pose of the cork's top edge and its height there, so a squash keeps its bottom in the mouth.
+    // The renderer holds the flight sprite and the seated sorting order; flightOrder puts it behind the glass.
+    public void SetCap(SpriteRenderer cap, Sprite seatedSprite, int flightOrder, Vector3 restLocalPos, Vector3 restScale, float height)
     {
         _cap = cap;
+        _capTransform = cap.transform;
+        _capFlightSprite = cap.sprite;
+        _capSeatedSprite = seatedSprite;
+        _capFlightOrder = flightOrder;
+        _capSeatedOrder = cap.sortingOrder;
         _capRest = restLocalPos;
         _capScale = restScale;
         _capHeight = height;
@@ -357,28 +373,39 @@ public sealed class TubeAnimController
             .Append(StretchTo(squash, 1f, settle, _settle));
     }
 
-    // The cap pops up over the mouth, drops onto the lip and snaps on with a squash that springs back.
-    // Returns the time it lands.
+    // The cork pops up tipped over the mouth, rights itself as it drops in and is pushed home with a squash that
+    // springs back. Returns the time it lands.
     private float InsertCapSnap(Sequence seq)
     {
         var pop = _settings.CapPopDuration;
         var drop = _settings.CapDropDuration;
         var land = pop * CapHang + drop;
 
+        _cap.sprite = _capFlightSprite;
+        _cap.sortingOrder = _capFlightOrder;
         _cap.gameObject.SetActive(true);
-        _cap.localPosition = _capRest + Vector3.up * _settings.CapDropHeight;
-        _cap.localScale = Vector3.zero;
+        _capTransform.localPosition = _capRest + Vector3.up * _settings.CapDropHeight;
+        _capTransform.localRotation = Quaternion.Euler(0f, 0f, CapTilt);
+        _capTransform.localScale = Vector3.zero;
 
-        seq.Insert(0f, _cap.DOScale(_capScale, pop).SetEase(Ease.OutBack));
-        seq.Insert(land - drop, _cap.DOLocalMove(_capRest, drop).SetEase(Ease.InQuad));
+        seq.Insert(0f, _capTransform.DOScale(_capScale, pop).SetEase(Ease.OutBack));
+        seq.Insert(0f, _capTransform.DOLocalRotate(Vector3.zero, land).SetEase(Ease.OutBack));
+        seq.Insert(land - drop, _capTransform.DOLocalMove(_capRest, drop).SetEase(Ease.InQuad));
+        seq.InsertCallback(land, _seatCap);
         seq.Insert(land, DOVirtual.Float(_settings.CapSnapSquash, 1f, _settings.CapSnapDuration, _setCapSquash).SetEase(_settle));
         return land;
     }
 
+    private void SeatCap()
+    {
+        _cap.sprite = _capSeatedSprite;
+        _cap.sortingOrder = _capSeatedOrder;
+    }
+
     private void SetCapSquash(float squash)
     {
-        _cap.localScale = new Vector3(_capScale.x / squash, _capScale.y * squash, 1f);
-        _cap.localPosition = _capRest + Vector3.down * (_capHeight * (1f - squash));
+        _capTransform.localScale = new Vector3(_capScale.x / squash, _capScale.y * squash, 1f);
+        _capTransform.localPosition = _capRest + Vector3.down * (_capHeight * (1f - squash));
     }
 
     private Tween StretchTo(float from, float to, float duration, Ease ease)

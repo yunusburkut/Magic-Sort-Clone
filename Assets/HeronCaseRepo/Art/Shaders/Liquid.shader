@@ -63,7 +63,7 @@ Shader "HeronCase/Liquid"
 
         #define MAX_LAYERS 8
         // matches LiquidShape.BottomPower
-        #define BOTTOM_POWER 2.3
+        #define BOTTOM_POWER 2.1
 
         struct Attributes
         {
