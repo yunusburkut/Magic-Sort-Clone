@@ -1,10 +1,13 @@
 Shader "HeronCase/SoftParticle"
 {
     // Round particle with a soft edge, colored by the particle color. Used for the splash mist and droplets.
+    // _Star turns it into a four-point twinkle, and _DstBlend One makes it additive for the solved sparks.
     Properties
     {
         _Softness ("Edge Softness", Range(0.01,1)) = 0.6
         _Core ("Bright Core", Range(0,1)) = 0.0
+        _Star ("Star Rays", Range(0,1)) = 0.0
+        [Enum(UnityEngine.Rendering.BlendMode)] _DstBlend ("Dst Blend", Float) = 10
     }
 
     SubShader
@@ -18,7 +21,7 @@ Shader "HeronCase/SoftParticle"
             "PreviewType" = "Plane"
         }
 
-        Blend SrcAlpha OneMinusSrcAlpha
+        Blend SrcAlpha [_DstBlend]
         Cull Off
         ZWrite Off
 
@@ -44,6 +47,8 @@ Shader "HeronCase/SoftParticle"
         CBUFFER_START(UnityPerMaterial)
             half _Softness;
             half _Core;
+            half _Star;
+            half _DstBlend;
         CBUFFER_END
 
         Varyings vert(Attributes IN)
@@ -61,10 +66,20 @@ Shader "HeronCase/SoftParticle"
         {
             UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(IN);
 
-            float r = length(IN.uv * 2.0 - 1.0);
+            float2 p = IN.uv * 2.0 - 1.0;
+            float r = length(p);
             float aa = max(fwidth(r), 1e-4);
             half a = 1.0 - smoothstep(1.0 - _Softness - aa, 1.0, r);
-            half3 rgb = lerp(IN.color.rgb, half3(1, 1, 1), _Core * saturate(1.0 - r * 2.0));
+
+            // thin rays along both axes that taper toward the tips, around a small glowing center
+            float2 q = abs(p);
+            float rays = saturate(1.0 - q.x * q.y * 60.0) * saturate(1.0 - r);
+            float glow = exp(-r * r * 18.0);
+            half star = saturate(rays * rays + glow);
+            a = lerp(a, star, _Star);
+
+            half core = lerp(saturate(1.0 - r * 2.0), glow, _Star);
+            half3 rgb = lerp(IN.color.rgb, half3(1, 1, 1), _Core * core);
             return half4(rgb, a * IN.color.a);
         }
         ENDHLSL

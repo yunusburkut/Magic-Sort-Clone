@@ -5,10 +5,11 @@ using UnityEngine.EventSystems;
 public class TubeView : MonoBehaviour, IPointerClickHandler
 {
     [Header("References")]
+    // squash & stretch target holding the glass, outline, cloak and liquid; the root only moves and tilts
+    [SerializeField] private Transform body;
     [SerializeField] private SpriteRenderer tubeRenderer;
     [SerializeField] private SpriteRenderer outlineRenderer;
     [SerializeField] private BoxCollider2D tubeCollider;
-    [SerializeField] private ParticleSystem fillVFX;
 
     [Header("Liquid")]
     [SerializeField] private Material liquidMaterial;
@@ -16,6 +17,7 @@ public class TubeView : MonoBehaviour, IPointerClickHandler
     [SerializeField] private Material splashMaterial;
     [SerializeField] private int liquidSortingOrder = 10;
     [SerializeField] private int streamSortingOrder = 20;
+    [SerializeField] private int sparkSortingOrder = 45;
 
     [Header("Bottle Interior (tube-local, at the default capacity)")]
     [SerializeField] private float bodyHalfWidth = 0.78f;
@@ -35,6 +37,7 @@ public class TubeView : MonoBehaviour, IPointerClickHandler
     private TubeWaterSlots _waterSlots;
     private TubeLiquid _liquid;
     private PourStreamView _stream;
+    private TubeSparksView _sparks;
     private bool _isSelected;
     private Vector3 _restLocalPos;
     private float _baseTubeHeight;
@@ -50,6 +53,7 @@ public class TubeView : MonoBehaviour, IPointerClickHandler
     private TweenCallback _cachedPourFlowEnd;
     private TweenCallback _cachedInvokePourComplete;
     private TweenCallback _cachedInvokeShakeComplete;
+    private TweenCallback _cachedSolvedPeak;
 
     private TweenScope _scope;
     private TubeAnimController _anim;
@@ -73,16 +77,18 @@ public class TubeView : MonoBehaviour, IPointerClickHandler
     {
         _mainCamera = Camera.main;
         _scope = new TweenScope();
-        _anim = new TubeAnimController(transform, outlineRenderer, settings, _scope);
+        _anim = new TubeAnimController(transform, body, outlineRenderer, settings, _scope);
         _cachedTransferWater = DoTransferWater;
         _cachedPourFlow = OnPourFlow;
         _cachedPourFlowEnd = OnPourFlowEnd;
         _cachedInvokePourComplete = InvokePourComplete;
         _cachedInvokeShakeComplete = InvokeShakeComplete;
+        _cachedSolvedPeak = PlaySolvedSparks;
         _baseTubeHeight = tubeRenderer.size.y;
 
-        _liquid = CreateChild<TubeLiquid>("Liquid");
-        _stream = CreateChild<PourStreamView>("PourStream");
+        _liquid = CreateChild<TubeLiquid>("Liquid", body);
+        _stream = CreateChild<PourStreamView>("PourStream", transform);
+        _sparks = CreateChild<TubeSparksView>("SolvedSparks", transform);
 
         outlineRenderer.color = Color.clear;
     }
@@ -92,10 +98,10 @@ public class TubeView : MonoBehaviour, IPointerClickHandler
         _scope.KillAll();
     }
 
-    private T CreateChild<T>(string childName) where T : Component
+    private static T CreateChild<T>(string childName, Transform parent) where T : Component
     {
         var go = new GameObject(childName);
-        go.transform.SetParent(transform, false);
+        go.transform.SetParent(parent, false);
         return go.AddComponent<T>();
     }
 
@@ -104,9 +110,11 @@ public class TubeView : MonoBehaviour, IPointerClickHandler
         var extraHeight = ResizeTube(data.capacity);
         _restLocalPos = transform.localPosition;
         _anim.SetRestLocalPos(_restLocalPos);
+        _anim.SetBottom(-tubeRenderer.size.y * 0.5f);
 
         _liquid.Setup(BuildLiquidShape(), settings, liquidMaterial, liquidSortingOrder);
         _stream.Setup(settings, pourStreamMaterial, splashMaterial, streamSortingOrder);
+        _sparks.Setup(splashMaterial, sparkSortingOrder);
         CacheSortingOrders();
 
         _waterSlots = new TubeWaterSlots(_liquid, data.capacity);
@@ -249,10 +257,7 @@ public class TubeView : MonoBehaviour, IPointerClickHandler
         var worldRightX = _mainCamera.transform.position.x + _mainCamera.orthographicSize * _mainCamera.aspect + 2f;
         var localRightX = transform.parent.InverseTransformPoint(new Vector3(worldRightX, 0f, 0f)).x;
 
-        transform.localPosition = new Vector3(localRightX, _restLocalPos.y, _restLocalPos.z);
-        _scope.Add(transform.DOLocalMoveX(_restLocalPos.x, settings.EnterDuration)
-            .SetDelay(delay)
-            .SetEase(Ease.OutBack));
+        _anim.PlayEnter(localRightX, delay);
     }
 
     public Tween MarkSolved()
@@ -262,15 +267,13 @@ public class TubeView : MonoBehaviour, IPointerClickHandler
         EventBus<TubeSolvedEvent>.Publish(new TubeSolvedEvent { SolvedColor = TopColor });
         HapticService.PlayWin();
 
-        if (fillVFX == null)
-        {
-            return _anim.PlayMarkSolved();
-        }
+        return _anim.PlayMarkSolved(_cachedSolvedPeak);
+    }
 
-        var main = fillVFX.main;
-        main.startColor = TopColor;
-        fillVFX.Play();
-        return _anim.PlayMarkSolved(main.duration);
+    private void PlaySolvedSparks()
+    {
+        var bounds = tubeRenderer.bounds;
+        _sparks.Burst(_liquid.MouthWorld, bounds.center, bounds.extents, TopColor, Mathf.Abs(transform.lossyScale.x));
     }
 
     public void PourInto(TubeView target)
@@ -293,6 +296,7 @@ public class TubeView : MonoBehaviour, IPointerClickHandler
         _liquid.BeginDrain();
         target._liquid.BeginFill(_pourColor);
         _stream.Begin(_liquid, target._liquid, _anim.PourTiltSign, _pourColor);
+        target._anim.PlayReceive(settings.StreamFallDuration);
     }
 
     private float ResizeTube(int capacity)

@@ -46,13 +46,25 @@ MonoBehaviour:
   _streamMouthMargin: 0.2
   _splashMistRate: 34
   _splashSprayRate: 40
+  _squashCrouch: 0.86
+  _squashJumpStretch: 1.1
+  _squashFallStretch: 1.06
+  _squashLand: 0.88
+  _squashReceive: 0.95
+  _squashSettleDuration: 0.4
+  _enterSquash: 0.93
+  _enterLean: 9
+  _shakeLean: 5
   _shakeMagnitude: 0.08
   _shakeDuration: 0.04
   _shakeDecay1: 0.6
   _shakeDecay2: 0.4
-  _solvedSquashX: 1.15
-  _solvedSquashY: 0.85
-  _solvedSquashDuration: 0.08
+  _solvedSquashY: 0.8
+  _solvedSquashDuration: 0.1
+  _solvedStretch: 1.18
+  _solvedHopHeight: 0.7
+  _solvedHopDuration: 0.38
+  _solvedLandSquash: 0.84
   _solvedBounceDuration: 0.5
   _enterDuration: 0.6
   _enterStaggerDelay: 0.08

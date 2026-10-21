@@ -48,6 +48,17 @@ public class GameSettings : ScriptableObject
     [SerializeField] private float _splashMistRate = 34f;
     [SerializeField] private float _splashSprayRate = 40f;
 
+    [Header("Squash & Stretch (height factor, the width keeps the area)")]
+    [SerializeField] private float _squashCrouch = 0.86f;
+    [SerializeField] private float _squashJumpStretch = 1.1f;
+    [SerializeField] private float _squashFallStretch = 1.06f;
+    [SerializeField] private float _squashLand = 0.88f;
+    [SerializeField] private float _squashReceive = 0.95f;
+    [SerializeField] private float _squashSettleDuration = 0.4f;
+    [SerializeField] private float _enterSquash = 0.93f;
+    [SerializeField] private float _enterLean = 9f;
+    [SerializeField] private float _shakeLean = 5f;
+
     [Header("Shake Animation")]
     [SerializeField, FormerlySerializedAs("shakeMagnitude")] private float _shakeMagnitude = 0.08f;
     [SerializeField, FormerlySerializedAs("shakeDuration")] private float _shakeDuration = 0.04f;
@@ -55,9 +66,12 @@ public class GameSettings : ScriptableObject
     [SerializeField, FormerlySerializedAs("shakeDecay2")] private float _shakeDecay2 = 0.4f;
 
     [Header("Solved Animation")]
-    [SerializeField, FormerlySerializedAs("solvedSquashX")] private float _solvedSquashX = 1.15f;
-    [SerializeField, FormerlySerializedAs("solvedSquashY")] private float _solvedSquashY = 0.85f;
-    [SerializeField, FormerlySerializedAs("solvedSquashDuration")] private float _solvedSquashDuration = 0.08f;
+    [SerializeField, FormerlySerializedAs("solvedSquashY")] private float _solvedSquashY = 0.8f;
+    [SerializeField, FormerlySerializedAs("solvedSquashDuration")] private float _solvedSquashDuration = 0.1f;
+    [SerializeField] private float _solvedStretch = 1.18f;
+    [SerializeField] private float _solvedHopHeight = 0.7f;
+    [SerializeField] private float _solvedHopDuration = 0.38f;
+    [SerializeField] private float _solvedLandSquash = 0.84f;
     [SerializeField, FormerlySerializedAs("solvedBounceDuration")] private float _solvedBounceDuration = 0.5f;
 
     [Header("Enter Animation")]
@@ -114,13 +128,25 @@ public class GameSettings : ScriptableObject
     public float StreamMouthMargin => _streamMouthMargin;
     public float SplashMistRate => _splashMistRate;
     public float SplashSprayRate => _splashSprayRate;
+    public float SquashCrouch => _squashCrouch;
+    public float SquashJumpStretch => _squashJumpStretch;
+    public float SquashFallStretch => _squashFallStretch;
+    public float SquashLand => _squashLand;
+    public float SquashReceive => _squashReceive;
+    public float SquashSettleDuration => _squashSettleDuration;
+    public float EnterSquash => _enterSquash;
+    public float EnterLean => _enterLean;
+    public float ShakeLean => _shakeLean;
     public float ShakeMagnitude => _shakeMagnitude;
     public float ShakeDuration => _shakeDuration;
     public float ShakeDecay1 => _shakeDecay1;
     public float ShakeDecay2 => _shakeDecay2;
-    public float SolvedSquashX => _solvedSquashX;
     public float SolvedSquashY => _solvedSquashY;
     public float SolvedSquashDuration => _solvedSquashDuration;
+    public float SolvedStretch => _solvedStretch;
+    public float SolvedHopHeight => _solvedHopHeight;
+    public float SolvedHopDuration => _solvedHopDuration;
+    public float SolvedLandSquash => _solvedLandSquash;
     public float SolvedBounceDuration => _solvedBounceDuration;
     public float EnterDuration => _enterDuration;
     public float EnterStaggerDelay => _enterStaggerDelay;
