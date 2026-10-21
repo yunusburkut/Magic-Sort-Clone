@@ -17,6 +17,7 @@ Shader "HeronCase/TubeGlass"
         _SweepStrength ("Sweep Strength", Range(0,1)) = 0.55
         _SweepWidth ("Sweep Width", Range(0.01,0.5)) = 0.09
         _SweepPeriod ("Sweep Period (s)", Float) = 3.5
+        _SweepDuration ("Sweep Travel Time (s)", Float) = 3.5
         _SweepStagger ("Stagger Per World Unit", Float) = 0.06
     }
 
@@ -70,6 +71,7 @@ Shader "HeronCase/TubeGlass"
             half   _SweepStrength;
             half   _SweepWidth;
             float  _SweepPeriod;
+            float  _SweepDuration;
             float  _SweepStagger;
         CBUFFER_END
 
@@ -103,10 +105,11 @@ Shader "HeronCase/TubeGlass"
             float edge = smoothstep(0.35, 0.9, tex.a);
             rgb = lerp(rgb, half3(1, 1, 1), edge * _EdgeGlow);
 
-            // diagonal shine sweep, staggered across the board by world x
+            // diagonal shine sweep, staggered across the board by world x; it crosses in _SweepDuration and then rests
+            // off the tube for the rest of the period
             float phase = frac(_Time.y / _SweepPeriod + IN.positionWS.x * _SweepStagger);
             float s = IN.uv.y + IN.uv.x * 0.45;
-            float center = lerp(-0.5, 2.2, phase);
+            float center = lerp(-0.5, 2.2, saturate(phase * _SweepPeriod / max(_SweepDuration, 1e-3)));
             float sweep = (1.0 - smoothstep(0.0, _SweepWidth, abs(s - center))) * glass * _SweepStrength;
             rgb = lerp(rgb, _SweepColor.rgb, sweep);
             a = max(a, sweep * 0.8);

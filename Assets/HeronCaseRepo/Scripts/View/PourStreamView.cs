@@ -79,7 +79,7 @@ public sealed class PourStreamView : MonoBehaviour
         _mistMaterial.SetFloat(SoftnessId, 0.9f);
         _sprayMaterial = new Material(splashMaterial);
         _sprayMaterial.SetFloat(SoftnessId, 0.25f);
-        _sprayMaterial.SetFloat(CoreId, 0.5f);
+        _sprayMaterial.SetFloat(CoreId, 0.15f);
 
         _mist = CreateMist(sortingOrder + MistOrderOffset);
         _spray = CreateSpray(sortingOrder + MistOrderOffset);
@@ -111,8 +111,11 @@ public sealed class PourStreamView : MonoBehaviour
         BuildCurve(out _p0, out _p1, out _p2, out _p3);
         _renderer.enabled = true;
 
+        // the splash is the poured liquid, so it takes its color instead of white
         var spray = _spray.main;
-        spray.startColor = new ParticleSystem.MinMaxGradient(Color.Lerp(color, Color.white, 0.12f), Color.Lerp(color, Color.white, 0.35f));
+        spray.startColor = new ParticleSystem.MinMaxGradient(color, Color.Lerp(color, Color.white, 0.15f));
+        var mist = _mist.main;
+        mist.startColor = new Color(color.r, color.g, color.b, 0.75f);
     }
 
     public void End()

@@ -33,7 +33,8 @@ Material:
     - _BodyAlpha: 0.15
     - _EdgeGlow: 0.05
     - _RimAlpha: 0.55
-    - _SweepPeriod: 3.5
+    - _SweepDuration: 1.6
+    - _SweepPeriod: 8
     - _SweepStagger: 0.06
     - _SweepStrength: 0.35
     - _SweepWidth: 0.09
