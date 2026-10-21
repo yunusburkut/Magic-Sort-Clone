@@ -1,3 +1,4 @@
+using DG.Tweening;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -59,5 +60,16 @@ public class FlowController : MonoBehaviour
         win.SetActive(state == FlowState.Win);
 
         stateText.text = Current.ToString();
+
+        if (state == FlowState.Menu) PopIn(menu.transform);
+        else if (state == FlowState.Win) PopIn(win.transform);
+    }
+
+    // the panel grows in with a soft overshoot instead of blinking on
+    private static void PopIn(Transform panel)
+    {
+        panel.DOKill();
+        panel.localScale = Vector3.one * 0.7f;
+        panel.DOScale(1f, 0.35f).SetEase(Ease.OutBack, 1.3f).SetLink(panel.gameObject);
     }
 }

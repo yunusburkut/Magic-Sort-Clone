@@ -8,6 +8,7 @@ Shader "HeronCase/TubeGlass"
         [Header(Glass)]
         _GlassTint ("Glass Tint", Color) = (0.86,0.95,1,1)
         _AlphaBoost ("Alpha Boost", Range(0.5,3)) = 1.35
+        _BodyAlpha ("Body Opacity", Range(0,1)) = 0.35
         _EdgeGlow ("Edge Glow", Range(0,1)) = 0.35
 
         [Header(Shine Sweep)]
@@ -61,6 +62,7 @@ Shader "HeronCase/TubeGlass"
             half4  _Color;
             half4  _GlassTint;
             half   _AlphaBoost;
+            half   _BodyAlpha;
             half   _EdgeGlow;
             half4  _SweepColor;
             half   _SweepStrength;
@@ -90,7 +92,10 @@ Shader "HeronCase/TubeGlass"
             float glass = smoothstep(0.02, 0.08, tex.a);
 
             half3 rgb = tex.rgb * _GlassTint.rgb;
-            float a = saturate(tex.a * _AlphaBoost);
+
+            // the thin body in front of the liquid stays faint so its colours read clearly; the rim keeps its line
+            float rim = smoothstep(0.2, 0.45, tex.a);
+            float a = saturate(tex.a * _AlphaBoost * lerp(_BodyAlpha, 1.0, rim));
 
             // brighter, cleaner silhouette: lift the strong (edge) pixels toward white
             float edge = smoothstep(0.35, 0.9, tex.a);

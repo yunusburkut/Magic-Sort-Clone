@@ -1,46 +1,30 @@
-using UnityEngine;
+using Lofelt.NiceVibrations;
 
+// Haptics through Feel's Nice Vibrations presets, tuned per platform (Core Haptics on iOS, amplitude
+// control on Android) instead of a raw vibrator buzz.
 public static class HapticService
 {
-    // Single short pulse on tube select
+    // light tick on tube select
     public static void PlaySelect()
     {
-#if UNITY_IOS && !UNITY_EDITOR
-        Handheld.Vibrate();
-#elif UNITY_ANDROID && !UNITY_EDITOR
-        Vibrate(new long[] { 0, 60 });
-#endif
+        HapticPatterns.PlayPreset(HapticPatterns.PresetType.Selection);
     }
 
-    // ~1s win pattern: two short taps + long pulse
+    // a no on an invalid move, in time with the shake
+    public static void PlayInvalid()
+    {
+        HapticPatterns.PlayPreset(HapticPatterns.PresetType.Warning);
+    }
+
+    // soft thud when the poured liquid lands in a tube
+    public static void PlayPourLand()
+    {
+        HapticPatterns.PlayPreset(HapticPatterns.PresetType.SoftImpact);
+    }
+
+    // a tube is complete
     public static void PlayWin()
     {
-#if UNITY_IOS && !UNITY_EDITOR
-        Handheld.Vibrate();
-#elif UNITY_ANDROID && !UNITY_EDITOR
-        Vibrate(new long[] { 0, 80, 50, 80, 50, 600 });
-#endif
+        HapticPatterns.PlayPreset(HapticPatterns.PresetType.Success);
     }
-
-#if UNITY_ANDROID && !UNITY_EDITOR
-    private static void Vibrate(long[] pattern)
-    {
-        using var unityPlayer = new AndroidJavaClass("com.unity3d.player.UnityPlayer");
-        using var activity = unityPlayer.GetStatic<AndroidJavaObject>("currentActivity");
-        using var vibrator = activity.Call<AndroidJavaObject>("getSystemService", "vibrator");
-        if (vibrator == null) return;
-
-        using var buildVersion = new AndroidJavaClass("android.os.Build$VERSION");
-        if (buildVersion.GetStatic<int>("SDK_INT") >= 26)
-        {
-            using var effectClass = new AndroidJavaClass("android.os.VibrationEffect");
-            using var effect = effectClass.CallStatic<AndroidJavaObject>("createWaveform", pattern, -1);
-            vibrator.Call("vibrate", effect);
-        }
-        else
-        {
-            vibrator.Call("vibrate", pattern, -1);
-        }
-    }
-#endif
 }

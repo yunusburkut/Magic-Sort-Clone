@@ -33,8 +33,10 @@ public sealed class PourStreamView : MonoBehaviour
     private Material _mistMaterial;
     private Material _sprayMaterial;
     private ParticleSystem.EmitParams _emit;
+    private readonly ParticleSystem.Particle[] _particles = new ParticleSystem.Particle[80];
     private float _mistDebt;
     private float _sprayDebt;
+    private Vector3 _targetPos;
 
     private bool _active;
     private bool _ending;
@@ -103,6 +105,7 @@ public sealed class PourStreamView : MonoBehaviour
         _flow = 0f;
         _mistDebt = 0f;
         _sprayDebt = 0f;
+        _targetPos = target.transform.position;
         _unit = Mathf.Abs(transform.lossyScale.x);
         BuildCurve(out _p0, out _p1, out _p2, out _p3);
         _renderer.enabled = true;
@@ -118,6 +121,7 @@ public sealed class PourStreamView : MonoBehaviour
 
     private void LateUpdate()
     {
+        FollowTarget();
         if (!_active) return;
 
         var dt = Time.deltaTime;
@@ -152,6 +156,40 @@ public sealed class PourStreamView : MonoBehaviour
             _active = false;
             _renderer.enabled = false;
         }
+    }
+
+    // The target can be picked up again the moment the pour ends; the loose end of the stream and the splash
+    // still in the air ride along with it instead of hanging where its liquid used to be.
+    private void FollowTarget()
+    {
+        if (_target == null) return;
+
+        var pos = _target.transform.position;
+        var delta = pos - _targetPos;
+        _targetPos = pos;
+        if (delta.sqrMagnitude < 1e-8f) return;
+
+        if (_ending)
+        {
+            _p0 += delta;
+            _p1 += delta;
+            _p2 += delta;
+            _p3 += delta;
+        }
+
+        Shift(_mist, delta);
+        Shift(_spray, delta);
+    }
+
+    private void Shift(ParticleSystem ps, Vector3 delta)
+    {
+        var count = ps.GetParticles(_particles);
+        if (count == 0) return;
+        for (var i = 0; i < count; i++)
+        {
+            _particles[i].position += delta;
+        }
+        ps.SetParticles(_particles, count);
     }
 
     // Emitted by hand at the landing point: the systems ride on the source tube, which is already swinging back

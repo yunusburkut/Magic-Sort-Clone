@@ -9,6 +9,10 @@ public class GameController : MonoBehaviour, ITubeInteractionController
     private TubeView _selectedTube;
     private PourCoordinator _pourCoordinator;
 
+    // the last tap that hit a busy tube, replayed when that tube frees up within the buffer window
+    private TubeView _bufferedTube;
+    private float _bufferedAt;
+
     private void OnEnable()
     {
         EventBus<ShakeCompletedEvent>.Subscribe(OnShakeComplete);
@@ -23,6 +27,7 @@ public class GameController : MonoBehaviour, ITubeInteractionController
     {
         if (_pourCoordinator != null)
         {
+            _pourCoordinator.TubeFreed -= OnTubeFreed;
             _pourCoordinator.Dispose();
         }
     }
@@ -30,25 +35,38 @@ public class GameController : MonoBehaviour, ITubeInteractionController
     public void Initialize(List<TubeView> tubes)
     {
         _selectedTube = null;
+        _bufferedTube = null;
 
         if (_pourCoordinator != null)
         {
+            _pourCoordinator.TubeFreed -= OnTubeFreed;
             _pourCoordinator.Dispose();
         }
 
         _pourCoordinator = new PourCoordinator(settings.QueuedPourSpeedMultiplier);
+        _pourCoordinator.TubeFreed += OnTubeFreed;
     }
 
     public void OnTubeClicked(TubeView tube)
     {
         if (_pourCoordinator.IsLocked(tube))
         {
+            BufferTap(tube);
             return;
         }
 
+        // a newer tap wins over an older one still waiting
+        _bufferedTube = null;
+
         if (_selectedTube == null)
         {
-            if (tube.IsEmpty || tube.IsSolved || _pourCoordinator.HasActivePour(tube))
+            if (_pourCoordinator.HasActivePour(tube))
+            {
+                BufferTap(tube);
+                return;
+            }
+
+            if (tube.IsEmpty || tube.IsSolved)
             {
                 return;
             }
@@ -90,7 +108,32 @@ public class GameController : MonoBehaviour, ITubeInteractionController
 
     private void OnShakeComplete(ShakeCompletedEvent e)
     {
+        // a tap on the shaking tube was a reaction to the shake, not a new move
+        if (_bufferedTube == e.Tube) _bufferedTube = null;
+
         _pourCoordinator.Unlock(e.Tube);
         e.Tube.SetSelected(false);
+    }
+
+    // A tap on a busy tube is not thrown away: it lands as soon as the tube is free, so the player never feels
+    // locked out by an animation.
+    private void BufferTap(TubeView tube)
+    {
+        _bufferedTube = tube;
+        _bufferedAt = Time.time;
+    }
+
+    private void OnTubeFreed(TubeView tube)
+    {
+        if (_bufferedTube != tube)
+        {
+            return;
+        }
+
+        _bufferedTube = null;
+        if (Time.time - _bufferedAt <= settings.InputBufferWindow)
+        {
+            OnTubeClicked(tube);
+        }
     }
 }

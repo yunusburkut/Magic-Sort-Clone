@@ -8,14 +8,19 @@ public class PourCoordinator : IDisposable
     private readonly Dictionary<TubeView, TubeView> _pendingPours = new Dictionary<TubeView, TubeView>();
     private readonly float _queuedSpeedMultiplier;
 
+    // a tube that was busy with a pour can be used again
+    public event Action<TubeView> TubeFreed;
+
     public PourCoordinator(float queuedSpeedMultiplier)
     {
         _queuedSpeedMultiplier = queuedSpeedMultiplier;
+        EventBus<PourFlowEndedEvent>.Subscribe(OnPourFlowEnded);
         EventBus<PourAnimationCompletedEvent>.Subscribe(OnPourAnimationCompleted);
     }
 
     public void Dispose()
     {
+        EventBus<PourFlowEndedEvent>.Unsubscribe(OnPourFlowEnded);
         EventBus<PourAnimationCompletedEvent>.Unsubscribe(OnPourAnimationCompleted);
     }
 
@@ -60,28 +65,40 @@ public class PourCoordinator : IDisposable
         activeFrom.AccelerateCurrentPour(_queuedSpeedMultiplier);
     }
 
-    private void OnPourAnimationCompleted(PourAnimationCompletedEvent e)
+    // The target is free as soon as the liquid is in, so the player never waits for the source to fly home.
+    private void OnPourFlowEnded(PourFlowEndedEvent e)
     {
         if (!_activeTargets.ContainsKey(e.To))
         {
             return;
         }
 
-        _lockedTubes.Remove(e.From);
         _activeTargets.Remove(e.To);
 
         EventBus<PourCompletedEvent>.Publish(new PourCompletedEvent { From = e.From, To = e.To });
 
-        if (!_pendingPours.Remove(e.To, out var pendingFrom))
+        if (_pendingPours.Remove(e.To, out var pendingFrom))
         {
-            return;
+            _lockedTubes.Remove(pendingFrom);
+
+            if (MoveValidator.CanPour(pendingFrom, e.To))
+            {
+                StartPour(pendingFrom, e.To);
+            }
+            else
+            {
+                TubeFreed?.Invoke(pendingFrom);
+            }
         }
 
-        _lockedTubes.Remove(pendingFrom);
+        TubeFreed?.Invoke(e.To);
+    }
 
-        if (MoveValidator.CanPour(pendingFrom, e.To))
+    private void OnPourAnimationCompleted(PourAnimationCompletedEvent e)
+    {
+        if (_lockedTubes.Remove(e.From))
         {
-            StartPour(pendingFrom, e.To);
+            TubeFreed?.Invoke(e.From);
         }
     }
 }

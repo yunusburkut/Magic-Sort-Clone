@@ -49,15 +49,19 @@ public class GameSettings : ScriptableObject
     [SerializeField] private float _splashSprayRate = 40f;
 
     [Header("Squash & Stretch (height factor, the width keeps the area)")]
-    [SerializeField] private float _squashCrouch = 0.86f;
-    [SerializeField] private float _squashJumpStretch = 1.1f;
-    [SerializeField] private float _squashFallStretch = 1.06f;
-    [SerializeField] private float _squashLand = 0.88f;
-    [SerializeField] private float _squashReceive = 0.95f;
-    [SerializeField] private float _squashSettleDuration = 0.4f;
-    [SerializeField] private float _enterSquash = 0.93f;
-    [SerializeField] private float _enterLean = 9f;
-    [SerializeField] private float _shakeLean = 5f;
+    [SerializeField] private float _squashCrouch = 0.93f;
+    [SerializeField] private float _squashJumpStretch = 1.05f;
+    [SerializeField] private float _squashFallStretch = 1.03f;
+    [SerializeField] private float _squashLand = 0.94f;
+    [SerializeField] private float _squashReceive = 0.97f;
+    [SerializeField] private float _squashSettleDuration = 0.35f;
+    [SerializeField] private float _enterSquash = 0.97f;
+    [SerializeField] private float _enterLean = 5f;
+    [SerializeField] private float _shakeLean = 2.5f;
+    // the spring the body settles back into shape with: damping 1 glides in, lower swings past the rest shape;
+    // frequency is swings per settle, whatever its duration
+    [SerializeField, Range(0.1f, 1f)] private float _settleDamping = 0.6f;
+    [SerializeField] private float _settleFrequency = 1.5f;
 
     [Header("Shake Animation")]
     [SerializeField, FormerlySerializedAs("shakeMagnitude")] private float _shakeMagnitude = 0.08f;
@@ -68,10 +72,10 @@ public class GameSettings : ScriptableObject
     [Header("Solved Animation")]
     [SerializeField, FormerlySerializedAs("solvedSquashY")] private float _solvedSquashY = 0.8f;
     [SerializeField, FormerlySerializedAs("solvedSquashDuration")] private float _solvedSquashDuration = 0.1f;
-    [SerializeField] private float _solvedStretch = 1.18f;
-    [SerializeField] private float _solvedHopHeight = 0.7f;
-    [SerializeField] private float _solvedHopDuration = 0.38f;
-    [SerializeField] private float _solvedLandSquash = 0.84f;
+    [SerializeField] private float _solvedStretch = 1.08f;
+    [SerializeField] private float _solvedHopHeight = 0.6f;
+    [SerializeField] private float _solvedHopDuration = 0.36f;
+    [SerializeField] private float _solvedLandSquash = 0.92f;
     [SerializeField, FormerlySerializedAs("solvedBounceDuration")] private float _solvedBounceDuration = 0.5f;
 
     [Header("Enter Animation")]
@@ -93,6 +97,8 @@ public class GameSettings : ScriptableObject
 
     [Header("Game")]
     [SerializeField, FormerlySerializedAs("queuedPourSpeedMultiplier")] private float _queuedPourSpeedMultiplier = 1.75f;
+    // a tap on a tube that is still busy is kept this long and replayed once the tube is free
+    [SerializeField] private float _inputBufferWindow = 0.35f;
 
     public float WaterSlotHeight => _waterSlotHeight;
     public float WaterRevealDuration => _waterRevealDuration;
@@ -137,6 +143,8 @@ public class GameSettings : ScriptableObject
     public float EnterSquash => _enterSquash;
     public float EnterLean => _enterLean;
     public float ShakeLean => _shakeLean;
+    public float SettleDamping => _settleDamping;
+    public float SettleFrequency => _settleFrequency;
     public float ShakeMagnitude => _shakeMagnitude;
     public float ShakeDuration => _shakeDuration;
     public float ShakeDecay1 => _shakeDecay1;
@@ -162,4 +170,5 @@ public class GameSettings : ScriptableObject
     public float CloakScaleReturnDuration => _cloakScaleReturnDuration;
     public float CloakRotation => _cloakRotation;
     public float QueuedPourSpeedMultiplier => _queuedPourSpeedMultiplier;
+    public float InputBufferWindow => _inputBufferWindow;
 }

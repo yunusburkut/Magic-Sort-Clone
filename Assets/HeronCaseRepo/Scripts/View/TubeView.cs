@@ -54,6 +54,7 @@ public class TubeView : MonoBehaviour, IPointerClickHandler
     private TweenCallback _cachedInvokePourComplete;
     private TweenCallback _cachedInvokeShakeComplete;
     private TweenCallback _cachedSolvedPeak;
+    private TweenCallback _cachedPourLandHaptic;
 
     private TweenScope _scope;
     private TubeAnimController _anim;
@@ -84,6 +85,7 @@ public class TubeView : MonoBehaviour, IPointerClickHandler
         _cachedInvokePourComplete = InvokePourComplete;
         _cachedInvokeShakeComplete = InvokeShakeComplete;
         _cachedSolvedPeak = PlaySolvedSparks;
+        _cachedPourLandHaptic = HapticService.PlayPourLand;
         _baseTubeHeight = tubeRenderer.size.y;
 
         _liquid = CreateChild<TubeLiquid>("Liquid", body);
@@ -201,6 +203,7 @@ public class TubeView : MonoBehaviour, IPointerClickHandler
         _liquid.EndDrain();
         _pourTarget._liquid.EndFill();
         _stream.End();
+        EventBus<PourFlowEndedEvent>.Publish(new PourFlowEndedEvent { From = this, To = _pourTarget });
     }
 
     private void InvokePourComplete()
@@ -245,6 +248,7 @@ public class TubeView : MonoBehaviour, IPointerClickHandler
 
         transform.localPosition = new Vector3(_restLocalPos.x, snapY, _restLocalPos.z);
         _anim.PlayShake(_cachedInvokeShakeComplete);
+        HapticService.PlayInvalid();
     }
 
     public bool HasColor(Color color)
@@ -296,7 +300,7 @@ public class TubeView : MonoBehaviour, IPointerClickHandler
         _liquid.BeginDrain();
         target._liquid.BeginFill(_pourColor);
         _stream.Begin(_liquid, target._liquid, _anim.PourTiltSign, _pourColor);
-        target._anim.PlayReceive(settings.StreamFallDuration);
+        target._anim.PlayReceive(settings.StreamFallDuration, _cachedPourLandHaptic);
     }
 
     private float ResizeTube(int capacity)

@@ -97,3 +97,7 @@ InitTestScene*.unity*
 
 # Auto-generated scenes by play mode tests
 /[Aa]ssets/[Ii]nit[Tt]est[Ss]cene*.unity*
+
+# Feel (MoreMountains) is a paid Asset Store package: install it from the Asset Store, do not commit it
+/[Aa]ssets/Feel/
+/[Aa]ssets/Feel.meta

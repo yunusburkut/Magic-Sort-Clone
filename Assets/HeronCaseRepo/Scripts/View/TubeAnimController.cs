@@ -4,7 +4,7 @@ using UnityEngine;
 public sealed class TubeAnimController
 {
     private const int TiltSamples = 9;
-    private const float ImpactDuration = 0.05f;
+    private const float ImpactDuration = 0.08f;
 
     private readonly Transform _transform;
     private readonly Transform _body;
@@ -31,6 +31,7 @@ public sealed class TubeAnimController
     private readonly TweenCallback<float> _setStretch;
     private readonly TweenCallback<float> _setLean;
     private readonly TweenCallback _landAfterPour;
+    private readonly EaseFunction _settle;
 
     // pour state, read by the cached tween updates
     private readonly float[] _tilts = new float[TiltSamples];
@@ -64,6 +65,7 @@ public sealed class TubeAnimController
         _setStretch = SetStretch;
         _setLean = SetLean;
         _landAfterPour = LandAfterPour;
+        _settle = new SpringEase(settings.SettleDamping, settings.SettleFrequency).Function;
     }
 
     public void SetRestLocalPos(Vector3 pos)
@@ -94,24 +96,24 @@ public sealed class TubeAnimController
 
         if (selected)
         {
-            // anticipation crouch, then it springs up stretched and wobbles back into shape at the top
+            // anticipation crouch, then it glides up stretched and eases back into shape at the top
             _selectTween = _scope.Add(DOTween.Sequence()
-                .Append(_transform.DOLocalMoveY(y - _settings.AnticipationDip, dip).SetEase(Ease.OutQuad))
-                .Append(_transform.DOLocalMoveY(y + _settings.LiftAmount, lift).SetEase(Ease.OutBack)));
+                .Append(_transform.DOLocalMoveY(y - _settings.AnticipationDip, dip).SetEase(Ease.OutSine))
+                .Append(_transform.DOLocalMoveY(y + _settings.LiftAmount, lift).SetEase(Ease.OutBack, 1.2f)));
 
             _bodyTween = _scope.Add(DOTween.Sequence()
-                .Append(StretchTo(_stretch, crouch, dip, Ease.OutQuad))
-                .Append(StretchTo(crouch, jump, lift * 0.5f, Ease.OutQuad))
-                .Append(StretchTo(jump, 1f, _settings.SquashSettleDuration, Ease.OutElastic)));
+                .Append(StretchTo(_stretch, crouch, dip, Ease.OutSine))
+                .Append(StretchTo(crouch, jump, lift * 0.5f, Ease.OutSine))
+                .Append(StretchTo(jump, 1f, _settings.SquashSettleDuration, _settle)));
         }
         else
         {
-            // falls with gravity, stretched by the speed, and squashes when it lands
+            // drops back down, a little stretched by the speed, and gives softly when it lands
             var fall = lift * 1.3f;
-            _selectTween = _scope.Add(_transform.DOLocalMoveY(y, fall).SetEase(Ease.InQuad));
+            _selectTween = _scope.Add(_transform.DOLocalMoveY(y, fall).SetEase(Ease.InSine));
 
             _bodyTween = _scope.Add(DOTween.Sequence()
-                .Append(StretchTo(_stretch, _settings.SquashFallStretch, fall, Ease.InQuad))
+                .Append(StretchTo(_stretch, _settings.SquashFallStretch, fall, Ease.InSine))
                 .Append(Land(_settings.SquashFallStretch, _settings.SquashLand)));
         }
     }
@@ -128,7 +130,7 @@ public sealed class TubeAnimController
         var lean = _settings.ShakeLean;
 
         _shakeTween = _scope.Add(DOTween.Sequence()
-            .Append(_transform.DOLocalMoveX(x + d, t).SetEase(Ease.OutExpo))
+            .Append(_transform.DOLocalMoveX(x + d, t).SetEase(Ease.OutSine))
             .Append(_transform.DOLocalMoveX(x - d, t).SetEase(Ease.InOutSine))
             .Append(_transform.DOLocalMoveX(x + d * _settings.ShakeDecay1, t).SetEase(Ease.InOutSine))
             .Append(_transform.DOLocalMoveX(x - d * _settings.ShakeDecay2, t).SetEase(Ease.InOutSine))
@@ -138,14 +140,14 @@ public sealed class TubeAnimController
         // the top lags the base, so the bottle wags its head a beat behind the shake
         _leanTween = _scope.Add(DOTween.Sequence()
             .AppendInterval(t * 0.4f)
-            .Append(LeanTo(_lean, lean, t, Ease.OutQuad))
+            .Append(LeanTo(_lean, lean, t, Ease.OutSine))
             .Append(LeanTo(lean, -lean, t, Ease.InOutSine))
             .Append(LeanTo(-lean, lean * _settings.ShakeDecay1, t, Ease.InOutSine))
             .Append(LeanTo(lean * _settings.ShakeDecay1, -lean * _settings.ShakeDecay2, t, Ease.InOutSine))
-            .Append(LeanTo(-lean * _settings.ShakeDecay2, 0f, t * 2f, Ease.OutSine)));
+            .Append(LeanTo(-lean * _settings.ShakeDecay2, 0f, t * 3f, _settle)));
     }
 
-    // Slides in from fromLocalX: the top trails behind while it moves, swings past when it stops, then settles.
+    // Slides in from fromLocalX: the top trails behind while it moves, leans past a touch when it stops, then settles.
     public void PlayEnter(float fromLocalX, float delay)
     {
         _enterTween?.Kill(false);
@@ -160,35 +162,36 @@ public sealed class TubeAnimController
 
         _enterTween = _scope.Add(_transform.DOLocalMoveX(_restLocalPos.x, duration)
             .SetDelay(delay)
-            .SetEase(Ease.OutBack));
+            .SetEase(Ease.OutBack, 1.1f));
 
         _leanTween = _scope.Add(DOTween.Sequence()
             .AppendInterval(delay)
-            .Append(LeanTo(_lean, trail, duration * 0.15f, Ease.OutQuad))
-            .Append(LeanTo(trail, -trail * 0.6f, duration * 0.45f, Ease.InOutSine))
-            .Append(LeanTo(-trail * 0.6f, 0f, _settings.SquashSettleDuration * 1.5f, Ease.OutElastic)));
+            .Append(LeanTo(_lean, trail, duration * 0.2f, Ease.OutSine))
+            .Append(LeanTo(trail, -trail * 0.35f, duration * 0.45f, Ease.InOutSine))
+            .Append(LeanTo(-trail * 0.35f, 0f, _settings.SquashSettleDuration * 1.5f, _settle)));
 
-        // stretched along the motion while it is fast, round again with a jiggle when it arrives
+        // stretched along the motion while it is fast, round again with a soft give when it arrives
         _bodyTween = _scope.Add(DOTween.Sequence()
             .AppendInterval(delay)
-            .Append(StretchTo(_stretch, squash, duration * 0.15f, Ease.OutQuad))
-            .Append(StretchTo(squash, 1f, duration * 0.6f, Ease.OutElastic)));
+            .Append(StretchTo(_stretch, squash, duration * 0.2f, Ease.OutSine))
+            .Append(StretchTo(squash, 1f, duration * 0.7f, _settle)));
     }
 
-    // The tube that catches the stream gives a little under the weight once it lands.
-    public void PlayReceive(float delay)
+    // The tube that catches the stream gives a little under the weight once it lands; onLand fires then.
+    public void PlayReceive(float delay, TweenCallback onLand)
     {
         _bodyTween?.Kill(false);
 
         var squash = _settings.SquashReceive;
         _bodyTween = _scope.Add(DOTween.Sequence()
             .AppendInterval(delay)
-            .Append(StretchTo(_stretch, squash, ImpactDuration * 2f, Ease.OutQuad))
-            .Append(StretchTo(squash, 1f, _settings.SquashSettleDuration, Ease.OutElastic)));
+            .AppendCallback(onLand)
+            .Append(StretchTo(_stretch, squash, ImpactDuration * 2f, Ease.OutSine))
+            .Append(StretchTo(squash, 1f, _settings.SquashSettleDuration, _settle)));
     }
 
-    // Anticipation crouch, a stretched hop that is round again at the top, a squash on the landing and a jelly
-    // settle. onPeak fires at the top of the hop. The returned tween carries no OnComplete of its own.
+    // Anticipation crouch, a stretched hop that is round again at the top, a squash on the landing and a soft
+    // spring settle. onPeak fires at the top of the hop. The returned tween carries no OnComplete of its own.
     public Tween PlayMarkSolved(TweenCallback onPeak)
     {
         _selectTween?.Kill(false);
@@ -211,19 +214,19 @@ public sealed class TubeAnimController
 
         var seq = DOTween.Sequence();
         var t = 0f;
-        seq.Insert(t, StretchTo(_stretch, crouch, crouchTime, Ease.OutQuad));
+        seq.Insert(t, StretchTo(_stretch, crouch, crouchTime, Ease.InOutSine));
         t += crouchTime;
 
-        seq.Insert(t, _transform.DOLocalMoveY(y + _settings.SolvedHopHeight, half).SetEase(Ease.OutQuad));
-        seq.Insert(t, StretchTo(crouch, stretch, half * 0.3f, Ease.OutQuad));
+        seq.Insert(t, _transform.DOLocalMoveY(y + _settings.SolvedHopHeight, half).SetEase(Ease.OutSine));
+        seq.Insert(t, StretchTo(crouch, stretch, half * 0.3f, Ease.OutSine));
         seq.Insert(t + half * 0.3f, StretchTo(stretch, 1f, half * 0.7f, Ease.InOutSine));
         t += half;
 
         // the body is round again here, so the mouth the sparks leave from is where it looks
         seq.InsertCallback(t, onPeak);
 
-        seq.Insert(t, _transform.DOLocalMoveY(y, half).SetEase(Ease.InQuad));
-        seq.Insert(t, StretchTo(1f, fall, half, Ease.InQuad));
+        seq.Insert(t, _transform.DOLocalMoveY(y, half).SetEase(Ease.InSine));
+        seq.Insert(t, StretchTo(1f, fall, half, Ease.InSine));
         t += half;
 
         seq.Insert(t, Land(fall, land, _settings.SolvedBounceDuration));
@@ -268,10 +271,10 @@ public sealed class TubeAnimController
 
         // a quick push-off on the way over; the body is back to rest before the lip has to meet the anchor
         var body = DOTween.Sequence()
-            .Append(StretchTo(_stretch, crouch, move * 0.2f, Ease.OutQuad))
-            .Append(StretchTo(crouch, jump, move * 0.2f, Ease.OutQuad))
+            .Append(StretchTo(_stretch, crouch, move * 0.2f, Ease.OutSine))
+            .Append(StretchTo(crouch, jump, move * 0.2f, Ease.OutSine))
             .Append(StretchTo(jump, 1f, move * 0.4f, Ease.InOutSine))
-            .Insert(0f, LeanTo(_lean, 0f, move * 0.5f, Ease.OutQuad));
+            .Insert(0f, LeanTo(_lean, 0f, move * 0.5f, Ease.OutSine));
 
         _pourSequence = DOTween.Sequence();
         _pourSequence.Append(DOVirtual.Float(0f, 1f, move, _moveUpdate).SetEase(Ease.Linear));
@@ -309,8 +312,8 @@ public sealed class TubeAnimController
     private Sequence Land(float from, float squash, float settle)
     {
         return DOTween.Sequence()
-            .Append(StretchTo(from, squash, ImpactDuration, Ease.OutQuad))
-            .Append(StretchTo(squash, 1f, settle, Ease.OutElastic));
+            .Append(StretchTo(from, squash, ImpactDuration, Ease.OutSine))
+            .Append(StretchTo(squash, 1f, settle, _settle));
     }
 
     private Tween StretchTo(float from, float to, float duration, Ease ease)
@@ -318,7 +321,17 @@ public sealed class TubeAnimController
         return DOVirtual.Float(from, to, duration, _setStretch).SetEase(ease);
     }
 
+    private Tween StretchTo(float from, float to, float duration, EaseFunction ease)
+    {
+        return DOVirtual.Float(from, to, duration, _setStretch).SetEase(ease);
+    }
+
     private Tween LeanTo(float from, float to, float duration, Ease ease)
+    {
+        return DOVirtual.Float(from, to, duration, _setLean).SetEase(ease);
+    }
+
+    private Tween LeanTo(float from, float to, float duration, EaseFunction ease)
     {
         return DOVirtual.Float(from, to, duration, _setLean).SetEase(ease);
     }
