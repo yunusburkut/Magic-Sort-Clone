@@ -5,17 +5,12 @@ using UnityEngine.Rendering;
 
 // The celebration when a tube is solved. Built in code like the pour splash; every particle is emitted by hand in
 // world space, with counts, sizes, spins and lifetimes drawn from wide ranges so no two bursts look alike. A few
-// glints pop around the cork as it snaps in; at the top of the hop a cluster of flares lights up the mouth, glitter
-// squirts up out of it and falls back twinkling, and stars keep popping up around the bottle for a moment. Everything
-// is a plain white sparkle, no fire-like streaks.
+// glints pop around the cork as it snaps in; at the top of the hop a cluster of flares lights up the mouth and stars
+// keep popping up around the bottle for a moment. Everything is a plain white sparkle, nothing shoots up or rains down.
 public sealed class TubeSparksView : MonoBehaviour
 {
     // plain white: the sparks shine by brightness alone and never match a liquid
     private static readonly Color Spark = Color.white;
-
-    // the squirt's pull in tube units (a tube is 6 tall): the board is scaled up, so world gravity alone would let
-    // it float away instead of falling back
-    private const float SquirtGravity = 90f;
 
     private static readonly int SoftnessId = Shader.PropertyToID("_Softness");
     private static readonly int CoreId = Shader.PropertyToID("_Core");
@@ -33,20 +28,15 @@ public sealed class TubeSparksView : MonoBehaviour
     };
 
     private readonly List<Material> _materials = new List<Material>();
-    private ParticleSystem _dust;
-    private ParticleSystem _glitter;
     private ParticleSystem _stars;
     private ParticleSystem _flares;
 
     public void Setup(Material particleMaterial, int sortingOrder)
     {
-        var dust = CreateMaterial(particleMaterial, TwinkleId, 1f);
         var flare = CreateMaterial(particleMaterial, StarId, 1f);
         var twinkle = CreateMaterial(particleMaterial, StarId, 1f);
         twinkle.SetFloat(TwinkleId, 1f);
 
-        _dust = CreateGlitter("Dust", dust, sortingOrder);
-        _glitter = CreateGlitter("Glitter", twinkle, sortingOrder);
         _stars = CreateStars("Stars", twinkle, sortingOrder + 1);
         _flares = CreateStars("Flares", flare, sortingOrder + 1);
     }
@@ -81,11 +71,10 @@ public sealed class TubeSparksView : MonoBehaviour
         }
     }
 
-    // mouth: where the glitter leaves the bottle; center and extents: the world box the stars pop up in
+    // mouth: where the flares light up; center and extents: the world box the stars pop up in
     public void Burst(Vector3 mouth, Vector3 center, Vector3 extents, float unit)
     {
         EmitFlares(mouth, unit);
-        EmitGlitter(mouth, unit);
         StartCoroutine(PopStars(center, extents, unit));
     }
 
@@ -113,40 +102,6 @@ public sealed class TubeSparksView : MonoBehaviour
             flare.startLifetime = Random.Range(0.2f, 0.35f);
             flare.startColor = Spark;
             _flares.Emit(flare, 1);
-        }
-    }
-
-    // squirts up out of the mouth like a jet of water and arcs back down, twinkling: mostly round droplets with a few
-    // star glints among them
-    private void EmitGlitter(Vector3 mouth, float unit)
-    {
-        Wake(_glitter);
-        Wake(_dust);
-        SetGravity(_glitter, SquirtGravity * unit);
-        SetGravity(_dust, SquirtGravity * unit);
-        var glitter = new ParticleSystem.EmitParams();
-        var count = Random.Range(16, 23);
-        for (var i = 0; i < count; i++)
-        {
-            // most of the jet goes straight up, a few drops fly wider
-            var a = (Random.value - Random.value) * 28f * Mathf.Deg2Rad;
-            glitter.position = mouth + new Vector3(Random.Range(-0.2f, 0.2f) * unit, 0f, 0f);
-            // with SquirtGravity this peaks a third of a tube above the mouth in about 0.2s and is back down by 0.5s
-            glitter.velocity = new Vector3(Mathf.Sin(a), Mathf.Cos(a), 0f) * (Random.Range(16f, 21f) * unit);
-            glitter.rotation = Random.Range(0f, 90f);
-            glitter.angularVelocity = Spin(90f, 420f);
-            glitter.startLifetime = Random.Range(0.45f, 0.65f);
-            glitter.startColor = Spark;
-            if (Random.value < 0.65f)
-            {
-                glitter.startSize = SizeIn(0.12f, 0.3f) * unit;
-                _dust.Emit(glitter, 1);
-            }
-            else
-            {
-                glitter.startSize = SizeIn(0.2f, 0.75f) * unit;
-                _glitter.Emit(glitter, 1);
-            }
         }
     }
 
@@ -199,26 +154,6 @@ public sealed class TubeSparksView : MonoBehaviour
         return material;
     }
 
-    // little drag and strong gravity, so the squirt arcs up and falls back like water
-    private ParticleSystem CreateGlitter(string systemName, Material material, int sortingOrder)
-    {
-        var ps = CreateSystem(systemName, material, sortingOrder);
-
-        var main = ps.main;
-        main.maxParticles = 48;
-
-        SetDrag(ps, 0.4f);
-
-        var size = ps.sizeOverLifetime;
-        size.enabled = true;
-        size.size = new ParticleSystem.MinMaxCurve(1f, new AnimationCurve(
-            new Keyframe(0f, 0.6f, 0f, 4f), new Keyframe(0.15f, 1f), new Keyframe(1f, 0.5f)));
-
-        SetAlpha(ps, new GradientAlphaKey(1f, 0f), new GradientAlphaKey(1f, 0.7f), new GradientAlphaKey(0f, 1f));
-        UseRandomStream(ps);
-        return ps;
-    }
-
     // pops in, then shrinks away while it spins
     private ParticleSystem CreateStars(string systemName, Material material, int sortingOrder)
     {
@@ -234,24 +169,6 @@ public sealed class TubeSparksView : MonoBehaviour
         SetAlpha(ps, new GradientAlphaKey(1f, 0f), new GradientAlphaKey(0.9f, 0.55f), new GradientAlphaKey(0f, 1f));
         UseRandomStream(ps);
         return ps;
-    }
-
-    // gravity in world units per second squared; the modifier scales the project's physics gravity
-    private static void SetGravity(ParticleSystem ps, float gravity)
-    {
-        var main = ps.main;
-        main.gravityModifier = gravity / Mathf.Max(Physics.gravity.magnitude, 1e-3f);
-    }
-
-    private static void SetDrag(ParticleSystem ps, float drag)
-    {
-        var limit = ps.limitVelocityOverLifetime;
-        limit.enabled = true;
-        limit.limit = 1000f;
-        limit.dampen = 0f;
-        limit.drag = drag;
-        limit.multiplyDragByParticleSize = false;
-        limit.multiplyDragByParticleVelocity = false;
     }
 
     private static void SetAlpha(ParticleSystem ps, params GradientAlphaKey[] alphas)
