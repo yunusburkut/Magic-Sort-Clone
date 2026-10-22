@@ -27,6 +27,9 @@ public sealed class DevPourCapture : MonoBehaviour
     private readonly StringBuilder _log = new StringBuilder();
     private RenderTexture _rt;
     private Texture2D _readback;
+    // looked up once in Start; the ring sits on the camera next to it
+    private Camera _camera;
+    private TapRippleView _ripple;
 
     public static string OutDir => Path.GetFullPath(Path.Combine(Application.dataPath, "..", "Logs", "ClaudeCaptures"));
 
@@ -81,7 +84,7 @@ public sealed class DevPourCapture : MonoBehaviour
     // How many screens' worth of pixels each shader shades in one frame (overdraw), at the phone's aspect.
     private void Coverage(string label)
     {
-        var cam = Camera.main;
+        var cam = _camera;
         var halfH = cam.orthographicSize;
         var halfW = halfH * PhoneAspect;
         var c = cam.transform.position;
@@ -328,6 +331,7 @@ public sealed class DevPourCapture : MonoBehaviour
 
         Directory.CreateDirectory(OutDir);
         foreach (var file in Directory.GetFiles(OutDir)) File.Delete(file);
+        _camera = Camera.main;
 
         yield return Frames(10);
         ClickFirstButton();
@@ -335,8 +339,7 @@ public sealed class DevPourCapture : MonoBehaviour
         // real clicks in the Game view while the editor gets focus would select tubes mid-capture
         if (EventSystem.current != null) EventSystem.current.enabled = false;
         // or leave rings; the scripted taps still play theirs
-        _ripple = FindFirstObjectByType<TapRippleView>();
-        if (_ripple != null) _ripple.enabled = false;
+        if (_camera != null && _camera.TryGetComponent(out _ripple)) _ripple.enabled = false;
         for (var i = 0; i < 10; i++)
         {
             yield return Frames(3);
@@ -419,12 +422,10 @@ public sealed class DevPourCapture : MonoBehaviour
         Finish();
     }
 
-    private TapRippleView _ripple;
-
     // what a finger on the tube does: the click it publishes and the ring it leaves
     private void Tap(TubeView tube)
     {
-        if (_ripple != null) _ripple.Play(Camera.main.WorldToScreenPoint(tube.transform.position));
+        if (_ripple != null) _ripple.Play(_camera.WorldToScreenPoint(tube.transform.position));
         EventBus<TubeClickedEvent>.Publish(new TubeClickedEvent { Tube = tube });
     }
 
@@ -485,7 +486,7 @@ public sealed class DevPourCapture : MonoBehaviour
 
     private void Capture(string label)
     {
-        var cam = Camera.main;
+        var cam = _camera;
         if (cam == null)
         {
             _log.AppendLine("No main camera for " + label);
