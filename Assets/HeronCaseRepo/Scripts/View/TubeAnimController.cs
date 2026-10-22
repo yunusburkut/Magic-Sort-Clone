@@ -144,7 +144,8 @@ public sealed class TubeAnimController
         _capHeight = height;
     }
 
-    public void PlaySelect(bool selected)
+    // onLand fires as a tube put back down touches the table
+    public void PlaySelect(bool selected, TweenCallback onLand)
     {
         _selectTween?.Kill(false);
         _glowTween?.Kill(false);
@@ -173,13 +174,20 @@ public sealed class TubeAnimController
         }
         else
         {
-            // drops back down, a little stretched by the speed, and gives softly when it lands
+            // falls back down with some weight, a little stretched by the speed, hits with a squash and pops up
+            // once while the body springs back into shape
             var fall = lift * 1.3f;
-            _selectTween = _scope.Add(_transform.DOLocalMoveY(y, fall).SetEase(Ease.InSine));
+            var hop = _settings.DropBounceDuration * 0.5f;
+            _selectTween = _scope.Add(DOTween.Sequence()
+                .Append(_transform.DOLocalMoveY(y, fall).SetEase(Ease.InQuad))
+                .AppendCallback(onLand)
+                .AppendInterval(ImpactDuration)
+                .Append(_transform.DOLocalMoveY(y + _settings.DropBounce, hop).SetEase(Ease.OutQuad))
+                .Append(_transform.DOLocalMoveY(y, hop).SetEase(Ease.InQuad)));
 
             _bodyTween = _scope.Add(DOTween.Sequence()
-                .Append(StretchTo(_stretch, _settings.SquashFallStretch, fall, Ease.InSine))
-                .Append(Land(_settings.SquashFallStretch, _settings.SquashLand)));
+                .Append(StretchTo(_stretch, _settings.SquashFallStretch, fall, Ease.InQuad))
+                .Append(Land(_settings.SquashFallStretch, _settings.DropLandSquash)));
         }
     }
 

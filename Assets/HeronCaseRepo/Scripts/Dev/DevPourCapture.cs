@@ -377,6 +377,19 @@ public sealed class DevPourCapture : MonoBehaviour
             yield return s_endOfFrame;
             Capture($"select_{i:00}");
         }
+
+        // put back down and lifted again: the fall, the knock on the table and the hop
+        yield return Frames(4);
+        Tap(from);
+        for (var i = 0; i < 16; i++)
+        {
+            yield return Frames(1);
+            yield return s_endOfFrame;
+            Capture($"drop_{i:00}");
+        }
+        yield return Frames(10);
+        Tap(from);
+        yield return Frames(12);
         yield return s_endOfFrame;
         Capture("selected");
         _pourStartedAt = Time.time;

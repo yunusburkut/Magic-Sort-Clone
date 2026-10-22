@@ -22,6 +22,12 @@ public static class HapticService
         HapticPatterns.PlayPreset(HapticPatterns.PresetType.SoftImpact);
     }
 
+    // light knock when a tube put back down hits the table
+    public static void PlayDropLand()
+    {
+        HapticPatterns.PlayPreset(HapticPatterns.PresetType.LightImpact);
+    }
+
     // a tube is complete
     public static void PlayWin()
     {

@@ -83,6 +83,7 @@ public class TubeView : MonoBehaviour, IPointerClickHandler
     private TweenCallback<float> _cachedSetGlassFlash;
     private TweenCallback<float> _cachedSetGlassShine;
     private TweenCallback _cachedPourLandHaptic;
+    private TweenCallback _cachedDropLandHaptic;
 
     private TweenScope _scope;
     private TubeAnimController _anim;
@@ -124,6 +125,7 @@ public class TubeView : MonoBehaviour, IPointerClickHandler
         _cachedSetGlassFlash = SetGlassFlash;
         _cachedSetGlassShine = SetGlassShine;
         _cachedPourLandHaptic = HapticService.PlayPourLand;
+        _cachedDropLandHaptic = HapticService.PlayDropLand;
 
         _liquid = CreateChild<TubeLiquid>("Liquid", body);
         _stream = CreateChild<PourStreamView>("PourStream", transform);
@@ -285,7 +287,7 @@ public class TubeView : MonoBehaviour, IPointerClickHandler
     public void SetSelected(bool selected)
     {
         _isSelected = selected;
-        _anim.PlaySelect(selected);
+        _anim.PlaySelect(selected, _cachedDropLandHaptic);
         if (selected) HapticService.PlaySelect();
     }
 
