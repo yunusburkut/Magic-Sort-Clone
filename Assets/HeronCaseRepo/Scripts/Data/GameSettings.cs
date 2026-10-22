@@ -27,6 +27,9 @@ public class GameSettings : ScriptableObject
     [SerializeField, FormerlySerializedAs("liftDuration")] private float _liftDuration = 0.2f;
     [SerializeField, FormerlySerializedAs("anticipationDip")] private float _anticipationDip = 0.15f;
     [SerializeField, FormerlySerializedAs("anticipationDuration")] private float _anticipationDuration = 0.06f;
+    // a tap that picks a tube, to lift it or to pour into it, swells it this much for a beat
+    [SerializeField] private float _tapPunch = 0.04f;
+    [SerializeField] private float _tapPunchSettleDuration = 0.25f;
 
     [Header("Pour Animation")]
     [SerializeField] private float _pourWindUpDuration = 0.06f;
@@ -133,6 +136,8 @@ public class GameSettings : ScriptableObject
     public float LiftDuration => _liftDuration;
     public float AnticipationDip => _anticipationDip;
     public float AnticipationDuration => _anticipationDuration;
+    public float TapPunch => _tapPunch;
+    public float TapPunchSettleDuration => _tapPunchSettleDuration;
     public float PourWindUpDuration => _pourWindUpDuration;
     public float PourWindUpDistance => _pourWindUpDistance;
     public float PourWindUpLean => _pourWindUpLean;

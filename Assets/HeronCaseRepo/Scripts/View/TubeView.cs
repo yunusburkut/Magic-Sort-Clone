@@ -289,6 +289,11 @@ public class TubeView : MonoBehaviour, IPointerClickHandler
         if (selected) HapticService.PlaySelect();
     }
 
+    public void Punch()
+    {
+        _anim.PlayPunch();
+    }
+
     // The selected tube's glass lights up, brightest where the liquid ends (TubeGlass.shader).
     private void SetGlassGlow(float glow)
     {

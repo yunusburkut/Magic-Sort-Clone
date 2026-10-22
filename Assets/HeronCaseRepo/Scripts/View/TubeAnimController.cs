@@ -36,6 +36,7 @@ public sealed class TubeAnimController
     private Tween _enterTween;
     private Tween _bodyTween;
     private Tween _leanTween;
+    private Tween _punchTween;
 
     private Vector3 _restLocalPos;
 
@@ -43,11 +44,14 @@ public sealed class TubeAnimController
     // The body keeps its area (width = 1 / stretch) and pivots on the bottle base, which stays planted.
     private float _stretch = 1f;
     private float _lean;
+    // the tap's swell, a uniform scale over the squash & stretch so the two never fight
+    private float _punch = 1f;
     // how far the selected glass glow is in, 0..1
     private float _glow;
     private float _bottomY;
     private readonly TweenCallback<float> _setStretch;
     private readonly TweenCallback<float> _setLean;
+    private readonly TweenCallback<float> _setPunch;
     private readonly TweenCallback _landAfterPour;
     private readonly EaseFunction _settle;
     private readonly EaseFunction _wobble;
@@ -104,6 +108,7 @@ public sealed class TubeAnimController
         _returnUpdate = UpdateReturn;
         _setStretch = SetStretch;
         _setLean = SetLean;
+        _setPunch = SetPunch;
         _landAfterPour = LandAfterPour;
         _setCapSquash = SetCapSquash;
         _seatCap = SeatCap;
@@ -176,6 +181,17 @@ public sealed class TubeAnimController
                 .Append(StretchTo(_stretch, _settings.SquashFallStretch, fall, Ease.InSine))
                 .Append(Land(_settings.SquashFallStretch, _settings.SquashLand)));
         }
+    }
+
+    // A tap that picks the tube swells it a touch from its base, and it springs back.
+    public void PlayPunch()
+    {
+        _punchTween?.Kill(false);
+
+        var peak = 1f + _settings.TapPunch;
+        _punchTween = _scope.Add(DOTween.Sequence()
+            .Append(DOVirtual.Float(_punch, peak, ImpactDuration, _setPunch).SetEase(Ease.OutSine))
+            .Append(DOVirtual.Float(peak, 1f, _settings.TapPunchSettleDuration, _setPunch).SetEase(_settle)));
     }
 
     public void PlayShake(TweenCallback onComplete)
@@ -474,10 +490,16 @@ public sealed class TubeAnimController
         ApplyBody();
     }
 
+    private void SetPunch(float punch)
+    {
+        _punch = punch;
+        ApplyBody();
+    }
+
     private void ApplyBody()
     {
         var s = Mathf.Max(0.1f, _stretch);
-        var scale = new Vector3(1f / s, s, 1f);
+        var scale = new Vector3(_punch / s, _punch * s, 1f);
         var rotation = Quaternion.Euler(0f, 0f, _lean);
         var pivot = new Vector3(0f, _bottomY, 0f);
         _body.localScale = scale;

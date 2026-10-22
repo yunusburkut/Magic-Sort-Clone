@@ -73,6 +73,7 @@ public class GameController : MonoBehaviour, ITubeInteractionController
 
             _selectedTube = tube;
             tube.SetSelected(true);
+            tube.Punch();
             return;
         }
 
@@ -82,6 +83,9 @@ public class GameController : MonoBehaviour, ITubeInteractionController
             _selectedTube = null;
             return;
         }
+
+        // the tube picked to pour into answers the tap too, whether the pour goes ahead or not
+        tube.Punch();
 
         if (_pourCoordinator.HasActivePour(tube))
         {
