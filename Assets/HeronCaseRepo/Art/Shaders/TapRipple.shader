@@ -5,10 +5,10 @@ Shader "HeronCase/TapRipple"
     // A faint dot fills the ring for the first moment, which reads as the press itself.
     Properties
     {
-        _StartRadius ("Start Radius", Range(0,1)) = 0.4
+        _StartRadius ("Start Radius", Range(0,1)) = 0.5
         _EndRadius ("End Radius", Range(0,1)) = 0.9
-        _StartWidth ("Start Half Width", Range(0,0.5)) = 0.07
-        _EndWidth ("End Half Width", Range(0,0.5)) = 0.035
+        _StartWidth ("Start Half Width", Range(0,0.5)) = 0.04
+        _EndWidth ("End Half Width", Range(0,0.5)) = 0.02
         _Fill ("Press Dot", Range(0,1)) = 0.12
     }
 

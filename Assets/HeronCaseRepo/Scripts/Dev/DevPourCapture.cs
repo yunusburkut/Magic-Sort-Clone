@@ -9,6 +9,8 @@ using Unity.Profiling.LowLevel.Unsafe;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.LowLevel;
 using UnityEngine.Rendering;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
@@ -582,25 +584,52 @@ public sealed class DevPourCapture : MonoBehaviour
             if (Mathf.Abs(dy) > Mathf.Abs(toRow)) toRow = dy;
         }
 
+        // The taps are real touches on a touchscreen of their own, through the input system and the UI input module.
+        // The editor's focus must not hold them back, and the real mouse is switched off so it cannot move or click
+        // anything meanwhile.
+        // the input system destroys the settings it lets go of unless they are an asset, so it gets a copy back
+        var restore = Instantiate(InputSystem.settings);
+        var probeSettings = Instantiate(restore);
+        probeSettings.backgroundBehavior = InputSettings.BackgroundBehavior.IgnoreFocus;
+        probeSettings.editorInputBehaviorInPlayMode = InputSettings.EditorInputBehaviorInPlayMode.AllDeviceInputAlwaysGoesToGameView;
+        InputSystem.settings = probeSettings;
+        var mouse = Mouse.current;
+        if (mouse != null) InputSystem.DisableDevice(mouse);
+        var finger = InputSystem.AddDevice<Touchscreen>("ProbeTouchscreen");
+        _eventSystem.enabled = true;
+
         var offBoard = _camera.ViewportToWorldPoint(new Vector3(0.03f, 0.5f, -_camera.transform.position.z));
-        yield return ProbeTap("beside", tube, home + new Vector3((next.RestWorldPosition.x - home.x) * 0.45f, 0f, 0f));
-        yield return ProbeTap("off_board", tube, offBoard);
-        yield return ProbeTap("toward_row", tube, home + new Vector3(0f, toRow * 0.45f, 0f));
-        yield return ProbeTap("on", tube, home);
+        var half = new Vector3((next.RestWorldPosition.x - home.x) * 0.5f, toRow * 0.5f, 0f);
+        yield return ProbeTap(finger, "beside", tube, home + new Vector3(half.x * 0.9f, 0f, 0f));
+        yield return ProbeTap(finger, "off_board", tube, offBoard);
+        yield return ProbeTap(finger, "toward_row", tube, home + new Vector3(0f, half.y * 0.9f, 0f));
+        yield return ProbeTap(finger, "corner", tube, home + half * 0.9f);
+        yield return ProbeTap(finger, "on", tube, home);
+        // the pour after the probe starts with nothing lifted
+        yield return ProbeTap(finger, "away", tube, offBoard);
+
+        _eventSystem.enabled = false;
+        InputSystem.RemoveDevice(finger);
+        if (mouse != null) InputSystem.EnableDevice(mouse);
+        InputSystem.settings = restore;
+        if (probeSettings != null) Destroy(probeSettings);
     }
 
-    private IEnumerator ProbeTap(string label, TubeView tube, Vector3 world)
+    private int _touchId;
+
+    private IEnumerator ProbeTap(Touchscreen finger, string label, TubeView tube, Vector3 world)
     {
         Vector2 screen = _camera.WorldToScreenPoint(world);
         var pointer = new PointerEventData(_eventSystem) { position = screen };
         _eventSystem.RaycastAll(pointer, _hits);
+        var top = _hits.Count > 0 ? ExecuteEvents.GetEventHandler<IPointerClickHandler>(_hits[0].gameObject) : null;
         _heard = "nothing";
-        var handler = _hits.Count > 0 ? ExecuteEvents.GetEventHandler<IPointerClickHandler>(_hits[0].gameObject) : null;
-        if (handler != null)
-        {
-            pointer.pointerPressRaycast = pointer.pointerCurrentRaycast = _hits[0];
-            ExecuteEvents.Execute(handler, pointer, ExecuteEvents.pointerClickHandler);
-        }
+
+        _touchId++;
+        InputSystem.QueueStateEvent(finger, new TouchState { touchId = _touchId, phase = UnityEngine.InputSystem.TouchPhase.Began, position = screen });
+        yield return Frames(2);
+        InputSystem.QueueStateEvent(finger, new TouchState { touchId = _touchId, phase = UnityEngine.InputSystem.TouchPhase.Ended, position = screen });
+        yield return Frames(2);
         if (_ripple != null) _ripple.Play(screen);
 
         yield return Frames(3);
@@ -608,7 +637,7 @@ public sealed class DevPourCapture : MonoBehaviour
         Capture("probe_" + label);
         yield return Frames(12);
         var lifted = tube.transform.position.y - tube.RestWorldPosition.y > 0.5f;
-        _log.AppendLine($"tap {label}: {(handler != null ? handler.name : "no handler")} -> {_heard}; {tube.name} {(lifted ? "up" : "down")}");
+        _log.AppendLine($"tap {label}: {(top != null ? top.name : "no handler")} -> {_heard}; {tube.name} {(lifted ? "up" : "down")}");
     }
 
     private void OnTubeClicked(TubeClickedEvent e) => _heard = e.Tube.name;
