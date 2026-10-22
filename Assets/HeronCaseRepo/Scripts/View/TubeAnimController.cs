@@ -6,8 +6,6 @@ public sealed class TubeAnimController
     private const int TiltSamples = 9;
     private const float ImpactDuration = 0.08f;
     private const int ChargeShakes = 1;
-    // how far the tip toward the target runs ahead of the mouth's travel: the base comes up first
-    private const float TipLead = 2.2f;
     // share of the cork's pop-in it hangs over the mouth before it drops
     private const float CapHang = 0.6f;
     // the cork pops in tipped over and rights itself on the way down
@@ -17,9 +15,6 @@ public sealed class TubeAnimController
     // the slide in: it arrives about halfway through, swings a touch past and settles
     private const float TravelDamping = 0.7f;
     private const float TravelFrequency = 1f;
-    // the mouth on its way to the pour swings past a little more, so the wait before the flow is a visible settle
-    private const float ReachDamping = 0.65f;
-    private const float ReachFrequency = 1f;
     // back home the top rocks on the way it came and wobbles upright
     private const float LandLean = 4f;
     private const float LandWobbleDuration = 0.55f;
@@ -57,7 +52,6 @@ public sealed class TubeAnimController
     private readonly EaseFunction _settle;
     private readonly EaseFunction _wobble;
     private readonly SpringEase _travel;
-    private readonly SpringEase _reach;
 
     // the cork pushed into the mouth when the tube is solved; it pivots on its top edge. It falls behind the glass
     // as the whole cork and, once in, swaps to the seated sprite drawn over the glass with its hidden part faded.
@@ -116,7 +110,6 @@ public sealed class TubeAnimController
         _settle = new SpringEase(settings.SettleDamping, settings.SettleFrequency).Function;
         _wobble = new SpringEase(WobbleDamping, WobbleFrequency).Function;
         _travel = new SpringEase(TravelDamping, TravelFrequency);
-        _reach = new SpringEase(ReachDamping, ReachFrequency);
     }
 
     public void SetRestLocalPos(Vector3 pos)
@@ -516,8 +509,7 @@ public sealed class TubeAnimController
     }
 
     // A short wind-up, then the tube tips over mouth first, as if a hand lifted it by the base: it turns about its
-    // mouth, so the base swings up, while the mouth glides over a low arc to the pour point, swings a touch past it
-    // and settles.
+    // mouth, so the base swings up, while the mouth glides over a low arc to the pour point at an even pace.
     private void UpdateMove(float p)
     {
         var a = _windUpShare;
@@ -529,9 +521,8 @@ public sealed class TubeAnimController
         }
 
         var q = Mathf.Clamp01((p - a) / (1f - a));
-        var tilt = 1f - Mathf.Pow(1f - q, TipLead);
-        var angle = Mathf.LerpUnclamped(_startAngle + _windUpLean, _tilts[0], tilt);
-        var mouth = QuadBezier(_mouthStart, _mouthArc, _anchor, _reach.At(q));
+        var angle = Mathf.LerpUnclamped(_startAngle + _windUpLean, _tilts[0], q);
+        var mouth = QuadBezier(_mouthStart, _mouthArc, _anchor, q);
         SetPose(PoseAround(mouth, angle), angle);
     }
 
@@ -551,13 +542,12 @@ public sealed class TubeAnimController
         _flowEndAngle = angle;
     }
 
-    // The tube swings upright first and then glides home, which gives the liquid left inside a good slosh.
+    // The tube is upright before it gets home, which gives the liquid left inside a good slosh; both run at an even pace.
     private void UpdateReturn(float p)
     {
-        var tilt = 1f - Mathf.Pow(1f - Mathf.Clamp01(p / 0.65f), 3f);
-        var t = EaseInOutSine(p);
+        var tilt = Mathf.Clamp01(p / 0.65f);
         var control = new Vector3((_flowEndPos.x + _restWorldPos.x) * 0.5f, Mathf.Max(_flowEndPos.y, _restWorldPos.y) + _settings.PourArcHeight * 0.4f, 0f);
-        SetPose(QuadBezier(_flowEndPos, control, _restWorldPos, t), Mathf.LerpUnclamped(_flowEndAngle, 0f, tilt));
+        SetPose(QuadBezier(_flowEndPos, control, _restWorldPos, p), Mathf.LerpUnclamped(_flowEndAngle, 0f, tilt));
     }
 
     private static Vector3 QuadBezier(Vector3 a, Vector3 b, Vector3 c, float t)

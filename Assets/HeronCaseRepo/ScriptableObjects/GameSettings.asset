@@ -32,13 +32,13 @@ MonoBehaviour:
   _pourWindUpDuration: 0.07
   _pourWindUpDistance: 0.3
   _pourWindUpLean: 6
-  _pourMoveDuration: 0.26
+  _pourMoveDuration: 0.28
   _pourFlowBaseDuration: 0.32
   _pourFlowDurationPerSlot: 0.3
   _pourFlowSlotExponent: 0.85
   _pourFlowSpeedUp: 1.35
   _pourFlowRise: 0.2
-  _pourReturnDuration: 0.26
+  _pourReturnDuration: 0.28
   _pourArcHeight: 1.5
   _pourLipHeight: 1
   _pourLipSideOffset: 0.15
