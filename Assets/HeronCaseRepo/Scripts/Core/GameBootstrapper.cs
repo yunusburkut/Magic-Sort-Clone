@@ -18,8 +18,13 @@ public class GameBootstrapper : MonoBehaviour
 
     private void Awake()
     {
+#if UNITY_WEBGL && !UNITY_EDITOR
+        // the browser paces frames to the display; a fixed target makes WebGL fall back to a timer loop that stutters
+        Application.targetFrameRate = -1;
+#else
         Application.targetFrameRate = targetFrameRate;
-        
+#endif
+
         Debug.Assert(gameController != null, "[GameBootstrapper] gameController is not assigned.");
         Debug.Assert(levelController != null, "[GameBootstrapper] levelController is not assigned.");
         Debug.Assert(inputController != null, "[GameBootstrapper] inputController is not assigned.");

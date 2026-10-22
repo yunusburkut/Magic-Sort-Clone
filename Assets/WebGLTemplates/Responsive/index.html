@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes">
+    <title>{{{ PRODUCT_NAME }}}</title>
+    <style>
+      html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #1d2035; }
+      /* the canvas fills whatever frame it is in (itch.io viewport, an iframe on another site, fullscreen) */
+      #unity-canvas { display: block; width: 100%; height: 100%; background: #1d2035; outline: none; touch-action: none; }
+      #unity-loading { position: absolute; left: 50%; top: 50%; width: 40%; max-width: 320px; height: 8px;
+        transform: translate(-50%, -50%); border-radius: 4px; background: rgba(255, 255, 255, 0.15); overflow: hidden; }
+      #unity-progress { width: 0; height: 100%; border-radius: 4px; background: #ffffff; }
+      #unity-warning { position: absolute; left: 50%; top: 5%; transform: translateX(-50%); display: none;
+        font: 14px sans-serif; color: #000000; }
+    </style>
+  </head>
+  <body>
+    <canvas id="unity-canvas" tabindex="-1"></canvas>
+    <div id="unity-loading"><div id="unity-progress"></div></div>
+    <div id="unity-warning"></div>
+    <script>
+      var canvas = document.querySelector("#unity-canvas");
+
+      function unityShowBanner(msg, type) {
+        var warningBanner = document.querySelector("#unity-warning");
+        function updateBannerVisibility() {
+          warningBanner.style.display = warningBanner.children.length ? 'block' : 'none';
+        }
+        var div = document.createElement('div');
+        div.innerHTML = msg;
+        warningBanner.appendChild(div);
+        if (type == 'error') div.style = 'background: red; color: white; padding: 10px;';
+        else {
+          if (type == 'warning') div.style = 'background: yellow; padding: 10px;';
+          setTimeout(function() {
+            warningBanner.removeChild(div);
+            updateBannerVisibility();
+          }, 5000);
+        }
+        updateBannerVisibility();
+      }
+
+      var buildUrl = "Build";
+      var loaderUrl = buildUrl + "/{{{ LOADER_FILENAME }}}";
+      var config = {
+        arguments: [],
+#if PROGRESSIVE_ASSET_LOADING
+        primaryDataUrls: {{{ JSON.stringify(PRIMARY_DATA_FILES) }}},
+        secondaryDataUrls: {{{ JSON.stringify(SECONDARY_DATA_FILES) }}},
+#else
+        dataUrl: buildUrl + "/{{{ DATA_FILENAME }}}",
+#endif
+        frameworkUrl: buildUrl + "/{{{ FRAMEWORK_FILENAME }}}",
+#if USE_WASM
+        codeUrl: buildUrl + "/{{{ CODE_FILENAME }}}",
+#endif
+#if SYMBOLS_FILENAME
+        symbolsUrl: buildUrl + "/{{{ SYMBOLS_FILENAME }}}",
+#endif
+        streamingAssetsUrl: "StreamingAssets",
+        companyName: {{{ JSON.stringify(COMPANY_NAME) }}},
+        productName: {{{ JSON.stringify(PRODUCT_NAME) }}},
+        productVersion: {{{ JSON.stringify(PRODUCT_VERSION) }}},
+        showBanner: unityShowBanner,
+        // phones report a pixel ratio of 3 and more; 2 keeps the bottles sharp at a lighter fill cost
+        devicePixelRatio: Math.min(window.devicePixelRatio || 1, 2),
+      };
+
+      var script = document.createElement("script");
+      script.src = loaderUrl;
+      script.onload = () => {
+        var loading = document.querySelector("#unity-loading");
+        var progress = document.querySelector("#unity-progress");
+        createUnityInstance(canvas, config, (p) => {
+          progress.style.width = 100 * p + "%";
+        }).then((unityInstance) => {
+          loading.style.display = "none";
+          canvas.focus();
+        }).catch((message) => {
+          alert(message);
+        });
+      };
+      document.body.appendChild(script);
+    </script>
+  </body>
+</html>
