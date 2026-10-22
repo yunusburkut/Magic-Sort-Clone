@@ -521,9 +521,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::TapRippleView
   rippleMaterial: {fileID: 2100000, guid: 24fbb4710a68446cbcd1bd6d9daf96ab, type: 2}
   sortingOrder: 1000
-  size: 0.2
-  duration: 0.42
-  color: {r: 1, g: 1, b: 1, a: 0.85}
+  size: 0.1
+  duration: 0.35
+  color: {r: 1, g: 1, b: 1, a: 0.6}
 --- !u!1 &527026267
 GameObject:
   m_ObjectHideFlags: 0
@@ -575,7 +575,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Unity.TextMeshPro::TMPro.TextMeshProUGUI
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_RaycastTarget: 1
+  m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:

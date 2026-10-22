@@ -2,14 +2,14 @@ Shader "HeronCase/TapRipple"
 {
     // The ring that answers a tap. The quad never changes size: the particle age in TEXCOORD0.z (0..1, see
     // TapRippleView) grows the ring inside it, thins it as it goes and fades it out, so a whole ripple is one particle.
-    // A soft dot fills the ring for the first moment, which reads as the press itself.
+    // A faint dot fills the ring for the first moment, which reads as the press itself.
     Properties
     {
-        _StartRadius ("Start Radius", Range(0,1)) = 0.22
-        _EndRadius ("End Radius", Range(0,1)) = 0.88
-        _StartWidth ("Start Half Width", Range(0,0.5)) = 0.11
-        _EndWidth ("End Half Width", Range(0,0.5)) = 0.03
-        _Fill ("Press Dot", Range(0,1)) = 0.35
+        _StartRadius ("Start Radius", Range(0,1)) = 0.4
+        _EndRadius ("End Radius", Range(0,1)) = 0.9
+        _StartWidth ("Start Half Width", Range(0,0.5)) = 0.07
+        _EndWidth ("End Half Width", Range(0,0.5)) = 0.035
+        _Fill ("Press Dot", Range(0,1)) = 0.12
     }
 
     SubShader

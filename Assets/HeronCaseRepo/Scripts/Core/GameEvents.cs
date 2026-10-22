@@ -26,6 +26,9 @@ public struct TubeClickedEvent
     public TubeView Tube;
 }
 
+// A tap on the board that is not on or beside any bottle that takes taps.
+public struct EmptySpaceClickedEvent { }
+
 public struct ShakeCompletedEvent
 {
     public TubeView Tube;

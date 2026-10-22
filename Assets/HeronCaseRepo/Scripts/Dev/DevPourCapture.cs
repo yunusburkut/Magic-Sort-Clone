@@ -301,6 +301,8 @@ public sealed class DevPourCapture : MonoBehaviour
         Application.logMessageReceived += OnLog;
         EventBus<PourFlowEndedEvent>.Subscribe(OnPourFlowEnded);
         EventBus<PourAnimationCompletedEvent>.Subscribe(OnPourAnimationCompleted);
+        EventBus<TubeClickedEvent>.Subscribe(OnTubeClicked);
+        EventBus<EmptySpaceClickedEvent>.Subscribe(OnEmptySpaceClicked);
     }
 
     private void OnDisable()
@@ -309,6 +311,8 @@ public sealed class DevPourCapture : MonoBehaviour
         Application.logMessageReceived -= OnLog;
         EventBus<PourFlowEndedEvent>.Unsubscribe(OnPourFlowEnded);
         EventBus<PourAnimationCompletedEvent>.Unsubscribe(OnPourAnimationCompleted);
+        EventBus<TubeClickedEvent>.Unsubscribe(OnTubeClicked);
+        EventBus<EmptySpaceClickedEvent>.Unsubscribe(OnEmptySpaceClicked);
     }
 
     private void OnDestroy()
@@ -337,8 +341,10 @@ public sealed class DevPourCapture : MonoBehaviour
         yield return Frames(10);
         ClickFirstButton();
         FixParticleSeeds();
-        // real clicks in the Game view while the editor gets focus would select tubes mid-capture
-        if (EventSystem.current != null) EventSystem.current.enabled = false;
+        // real clicks in the Game view while the editor gets focus would select tubes mid-capture; the tap probe
+        // still raycasts through it
+        _eventSystem = EventSystem.current;
+        if (_eventSystem != null) _eventSystem.enabled = false;
         // or leave rings; the scripted taps still play theirs
         if (_camera != null && _camera.TryGetComponent(out _ripple)) _ripple.enabled = false;
         for (var i = 0; i < 10; i++)
@@ -352,6 +358,7 @@ public sealed class DevPourCapture : MonoBehaviour
         yield return s_endOfFrame;
         Capture("idle");
         yield return Bench("idle", 300);
+        yield return ProbeTaps();
 
         if (!TryFindPour(out var from, out var to))
         {
@@ -543,6 +550,70 @@ public sealed class DevPourCapture : MonoBehaviour
         File.WriteAllBytes(Path.Combine(OutDir, label + ".png"), _readback.EncodeToPNG());
     }
 
+
+    // Tap probe: clicks through the event system's own raycast, where a finger would land. A tap in the gap beside a
+    // bottle and in the gap toward the other row must pick that bottle, a tap off the board must put it back down.
+    private EventSystem _eventSystem;
+    private readonly List<RaycastResult> _hits = new List<RaycastResult>();
+    private string _heard;
+
+    private IEnumerator ProbeTaps()
+    {
+        var tubes = Collect<TubeView>(false);
+        TubeView tube = null, next = null;
+        for (var i = 0; i + 1 < tubes.Count && tube == null; i++)
+        {
+            if (!Mathf.Approximately(tubes[i].RestWorldPosition.y, tubes[i + 1].RestWorldPosition.y)) continue;
+            tube = tubes[i];
+            next = tubes[i + 1];
+        }
+
+        if (tube == null || _eventSystem == null)
+        {
+            _log.AppendLine("No row to probe taps on");
+            yield break;
+        }
+
+        var home = tube.RestWorldPosition;
+        var toRow = 0f;
+        foreach (var t in tubes)
+        {
+            var dy = t.RestWorldPosition.y - home.y;
+            if (Mathf.Abs(dy) > Mathf.Abs(toRow)) toRow = dy;
+        }
+
+        var offBoard = _camera.ViewportToWorldPoint(new Vector3(0.03f, 0.5f, -_camera.transform.position.z));
+        yield return ProbeTap("beside", tube, home + new Vector3((next.RestWorldPosition.x - home.x) * 0.45f, 0f, 0f));
+        yield return ProbeTap("off_board", tube, offBoard);
+        yield return ProbeTap("toward_row", tube, home + new Vector3(0f, toRow * 0.45f, 0f));
+        yield return ProbeTap("on", tube, home);
+    }
+
+    private IEnumerator ProbeTap(string label, TubeView tube, Vector3 world)
+    {
+        Vector2 screen = _camera.WorldToScreenPoint(world);
+        var pointer = new PointerEventData(_eventSystem) { position = screen };
+        _eventSystem.RaycastAll(pointer, _hits);
+        _heard = "nothing";
+        var handler = _hits.Count > 0 ? ExecuteEvents.GetEventHandler<IPointerClickHandler>(_hits[0].gameObject) : null;
+        if (handler != null)
+        {
+            pointer.pointerPressRaycast = pointer.pointerCurrentRaycast = _hits[0];
+            ExecuteEvents.Execute(handler, pointer, ExecuteEvents.pointerClickHandler);
+        }
+        if (_ripple != null) _ripple.Play(screen);
+
+        yield return Frames(3);
+        yield return s_endOfFrame;
+        Capture("probe_" + label);
+        yield return Frames(12);
+        var lifted = tube.transform.position.y - tube.RestWorldPosition.y > 0.5f;
+        _log.AppendLine($"tap {label}: {(handler != null ? handler.name : "no handler")} -> {_heard}; {tube.name} {(lifted ? "up" : "down")}");
+    }
+
+    private void OnTubeClicked(TubeClickedEvent e) => _heard = e.Tube.name;
+
+    private void OnEmptySpaceClicked(EmptySpaceClickedEvent e) => _heard = "empty space";
 
     // Responsiveness probe: taps the target the moment its liquid is in, like a fast player would.
     private float _pourStartedAt;

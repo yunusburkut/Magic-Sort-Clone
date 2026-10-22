@@ -106,6 +106,21 @@ public class GameController : MonoBehaviour, ITubeInteractionController
         _pourCoordinator.StartPour(from, tube);
     }
 
+    // a tap away from the bottles puts the lifted one back down
+    public void OnEmptySpaceClicked()
+    {
+        // and cancels a tap still waiting, like any newer tap
+        _bufferedTube = null;
+
+        if (_selectedTube == null)
+        {
+            return;
+        }
+
+        _selectedTube.SetSelected(false);
+        _selectedTube = null;
+    }
+
     private void OnShakeComplete(ShakeCompletedEvent e)
     {
         // a tap on the shaking tube was a reaction to the shake, not a new move

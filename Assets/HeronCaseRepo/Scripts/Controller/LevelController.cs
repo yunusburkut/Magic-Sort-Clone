@@ -23,13 +23,22 @@ public class LevelController : MonoBehaviour
     private DeadlockChecker _deadlockChecker;
     private readonly List<TubeView> _tubeViews = new List<TubeView>();
     private readonly List<TubeData> _builtTubes = new List<TubeData>();
+    private Camera _camera;
+    private BoardTapArea _tapArea;
 
     public void Initialize(ITubeInteractionController levelController, WinConditionChecker winChecker, DeadlockChecker deadlockChecker)
     {
         _levelController = levelController;
         _winChecker = winChecker;
         _deadlockChecker = deadlockChecker;
-        
+        _camera = Camera.main;
+
+        // every bottle's cell reaches halfway to its neighbors in the row and to the next row
+        _tapArea = new GameObject("BoardTapArea").AddComponent<BoardTapArea>();
+        _tapArea.transform.SetParent(transform, false);
+        _tapArea.Setup(_camera, new Vector2(tubeSpacing, rowSpacing));
+        _tapArea.SetTubes(_tubeViews);
+
         EventBus<DeadlockEvent>.Subscribe(RestartLevel);
     }
     
@@ -67,8 +76,7 @@ public class LevelController : MonoBehaviour
         var rowCount = Mathf.CeilToInt((float)count / tubesPerRow);
         var animIndex = 0;
 
-        var cam = Camera.main;
-        var camPos = cam.transform.position;
+        var camPos = _camera.transform.position;
         var layoutOriginY = camPos.y + (rowCount - 1) * rowSpacing * 0.5f;
 
         for (var row = 0; row < rowCount; row++)

@@ -102,6 +102,12 @@ public class TubeView : MonoBehaviour, IPointerClickHandler
 
     public int TopColorCount => _waterSlots.TopColorCount;
 
+    // off while the cloak hides the bottle and once it is solved
+    public bool IsTappable => tubeCollider.enabled;
+
+    // where the bottle stands in the layout, wherever its animations have taken it
+    public Vector3 RestWorldPosition => transform.parent.TransformPoint(_restLocalPos);
+
     private void Awake()
     {
         _mainCamera = Camera.main;
@@ -366,9 +372,8 @@ public class TubeView : MonoBehaviour, IPointerClickHandler
         _pourAmount = Mathf.Min(TopColorCount, target.AvailableSlots);
         SetSortingBoost(settings.PourSortingBoost);
 
-        var restWorldPos = transform.parent.TransformPoint(_restLocalPos);
         var callbacks = new PourAnimCallbacks(_cachedTransferWater, _cachedPourFlow, _cachedPourFlowEnd, _cachedInvokePourComplete);
-        _anim.PlayPourInto(_liquid, target._liquid, _pourAmount, restWorldPos, callbacks);
+        _anim.PlayPourInto(_liquid, target._liquid, _pourAmount, RestWorldPosition, callbacks);
     }
 
     private void TransferWater(TubeView target)

@@ -21,9 +21,9 @@ public sealed class TapRippleView : MonoBehaviour
     // over the tubes, even one that pours with its sorting boost, and over the UI canvas
     [SerializeField] private int sortingOrder = 1000;
     // the ring at its widest, as a fraction of the screen height, so it is the same size on every screen and zoom
-    [SerializeField] private float size = 0.2f;
-    [SerializeField] private float duration = 0.42f;
-    [SerializeField] private Color color = new Color(1f, 1f, 1f, 0.85f);
+    [SerializeField] private float size = 0.1f;
+    [SerializeField] private float duration = 0.35f;
+    [SerializeField] private Color color = new Color(1f, 1f, 1f, 0.6f);
 
     private Camera _camera;
     private ParticleSystem _ripples;
