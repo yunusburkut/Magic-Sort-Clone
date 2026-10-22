@@ -10,6 +10,7 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.Rendering;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 // Editor-only capture run, started by ClaudeCaptureTrigger: opens the level, plays one pour and saves frames
@@ -48,10 +49,10 @@ public sealed class DevPourCapture : MonoBehaviour
         go.AddComponent<DevPourCapture>();
     }
 
-    // particle systems pick a new seed on Play unless told otherwise; creation order keeps the seeds stable
+    // particle systems pick a new seed on Play unless told otherwise; hierarchy order keeps the seeds stable
     private void FixParticleSeeds()
     {
-        var systems = new List<ParticleSystem>(FindObjectsByType<ParticleSystem>(FindObjectsInactive.Include, FindObjectsSortMode.InstanceID));
+        var systems = Collect<ParticleSystem>(true);
         var n = 0;
         foreach (var ps in systems)
         {
@@ -92,7 +93,7 @@ public sealed class DevPourCapture : MonoBehaviour
         var viewArea = (double)view.width * view.height;
         var byShader = new SortedDictionary<string, double[]>();
 
-        foreach (var r in FindObjectsByType<Renderer>(FindObjectsSortMode.None))
+        foreach (var r in Collect<Renderer>(false))
         {
             if (!r.enabled || !r.gameObject.activeInHierarchy || r.sharedMaterial == null) continue;
             if ((cam.cullingMask & (1 << r.gameObject.layer)) == 0) continue;
@@ -107,7 +108,7 @@ public sealed class DevPourCapture : MonoBehaviour
             Add(byShader, r.sharedMaterial.shader.name, area / viewArea);
         }
 
-        foreach (var g in FindObjectsByType<Graphic>(FindObjectsSortMode.None))
+        foreach (var g in Collect<Graphic>(false))
         {
             if (!g.isActiveAndEnabled || g.canvas == null || g.color.a <= 0f) continue;
             var corners = new Vector3[4];
@@ -436,10 +437,10 @@ public sealed class DevPourCapture : MonoBehaviour
 
     private void ClickFirstButton()
     {
-        var buttons = Resources.FindObjectsOfTypeAll<Button>();
-        for (var i = 0; i < buttons.Length; i++)
+        var buttons = Collect<Button>(false);
+        for (var i = 0; i < buttons.Count; i++)
         {
-            if (!buttons[i].gameObject.scene.IsValid() || !buttons[i].isActiveAndEnabled || !buttons[i].interactable) continue;
+            if (!buttons[i].isActiveAndEnabled || !buttons[i].interactable) continue;
             _log.AppendLine("Clicked " + buttons[i].name);
             buttons[i].onClick.Invoke();
             return;
@@ -448,18 +449,18 @@ public sealed class DevPourCapture : MonoBehaviour
     }
 
     // Prefers a pour onto liquid of the same color, so the splash lands on a surface.
-    private static bool TryFindPour(out TubeView from, out TubeView to)
+    private bool TryFindPour(out TubeView from, out TubeView to)
     {
         from = null;
         to = null;
         var best = -1;
-        var tubes = Resources.FindObjectsOfTypeAll<TubeView>();
+        var tubes = Collect<TubeView>(false);
         foreach (var a in tubes)
         {
-            if (!a.gameObject.scene.IsValid() || !a.isActiveAndEnabled || a.IsEmpty || a.IsSolved) continue;
+            if (!a.isActiveAndEnabled || a.IsEmpty || a.IsSolved) continue;
             foreach (var b in tubes)
             {
-                if (a == b || !b.gameObject.scene.IsValid() || !b.isActiveAndEnabled || !MoveValidator.CanPour(a, b)) continue;
+                if (a == b || !b.isActiveAndEnabled || !MoveValidator.CanPour(a, b)) continue;
                 var score = (b.IsEmpty ? 0 : 4) + Mathf.Min(a.TopColorCount, b.AvailableSlots);
                 if (score <= best) continue;
                 best = score;
@@ -471,17 +472,34 @@ public sealed class DevPourCapture : MonoBehaviour
     }
 
     // Any filled tube away from the pour, to play the solved hop and sparks on.
-    private static TubeView FindSolvedCandidate(TubeView from, TubeView to)
+    // the tubes come in the order the level built them, so it is always the same tube
+    private TubeView FindSolvedCandidate(TubeView from, TubeView to)
     {
-        var tubes = Resources.FindObjectsOfTypeAll<TubeView>();
-        // the lookup order changes between runs; by name it is always the same tube
-        Array.Sort(tubes, (a, b) => string.CompareOrdinal(a.name, b.name));
-        foreach (var t in tubes)
+        foreach (var t in Collect<TubeView>(false))
         {
-            if (t == from || t == to || !t.gameObject.scene.IsValid() || !t.isActiveAndEnabled || t.IsEmpty || t.IsSolved) continue;
+            if (t == from || t == to || !t.isActiveAndEnabled || t.IsEmpty || t.IsSolved) continue;
             return t;
         }
         return null;
+    }
+
+    private readonly List<GameObject> _roots = new List<GameObject>();
+
+    // Every T in the open scenes, walked down the hierarchy root by root, so the order is the same on every run.
+    private List<T> Collect<T>(bool includeInactive) where T : Component
+    {
+        var found = new List<T>();
+        for (var i = 0; i < SceneManager.sceneCount; i++) CollectFrom(SceneManager.GetSceneAt(i), includeInactive, found);
+        // the DontDestroyOnLoad scene is not in that list; this object lives in it
+        CollectFrom(gameObject.scene, includeInactive, found);
+        return found;
+    }
+
+    private void CollectFrom<T>(Scene scene, bool includeInactive, List<T> found) where T : Component
+    {
+        if (!scene.isLoaded) return;
+        scene.GetRootGameObjects(_roots);
+        foreach (var root in _roots) found.AddRange(root.GetComponentsInChildren<T>(includeInactive));
     }
 
     private void Capture(string label)
