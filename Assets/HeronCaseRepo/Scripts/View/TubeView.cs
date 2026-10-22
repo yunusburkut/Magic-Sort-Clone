@@ -83,7 +83,7 @@ public class TubeView : MonoBehaviour, IPointerClickHandler
     private TweenCallback<float> _cachedSetGlassFlash;
     private TweenCallback<float> _cachedSetGlassShine;
     private TweenCallback _cachedPourLandHaptic;
-    private TweenCallback _cachedDropLandHaptic;
+    private TweenCallback _cachedDropLand;
 
     private TweenScope _scope;
     private TubeAnimController _anim;
@@ -125,7 +125,7 @@ public class TubeView : MonoBehaviour, IPointerClickHandler
         _cachedSetGlassFlash = SetGlassFlash;
         _cachedSetGlassShine = SetGlassShine;
         _cachedPourLandHaptic = HapticService.PlayPourLand;
-        _cachedDropLandHaptic = HapticService.PlayDropLand;
+        _cachedDropLand = OnDropLand;
 
         _liquid = CreateChild<TubeLiquid>("Liquid", body);
         _stream = CreateChild<PourStreamView>("PourStream", transform);
@@ -287,13 +287,20 @@ public class TubeView : MonoBehaviour, IPointerClickHandler
     public void SetSelected(bool selected)
     {
         _isSelected = selected;
-        _anim.PlaySelect(selected, _cachedDropLandHaptic);
+        _anim.PlaySelect(selected, _cachedDropLand);
         if (selected) HapticService.PlaySelect();
     }
 
     public void Punch()
     {
         _anim.PlayPunch();
+    }
+
+    // put back down, it hits the table: the liquid inside wobbles and the hand feels a light knock
+    private void OnDropLand()
+    {
+        _liquid.Jolt(settings.DropSloshKick);
+        HapticService.PlayDropLand();
     }
 
     // The selected tube's glass lights up, brightest where the liquid ends (TubeGlass.shader).

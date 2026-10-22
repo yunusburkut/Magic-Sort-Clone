@@ -30,8 +30,11 @@ public class GameSettings : ScriptableObject
     // a tap that picks a tube, to lift it or to pour into it, swells it this much for a beat
     [SerializeField] private float _tapPunch = 0.04f;
     [SerializeField] private float _tapPunchSettleDuration = 0.25f;
-    // put back down it lands with this squash and pops up this high once before it settles
+    // put back down it falls this fast, lands with this squash, knocks the liquid this hard and pops up this high
+    // once before it settles
+    [SerializeField] private float _dropFallDuration = 0.13f;
     [SerializeField] private float _dropLandSquash = 0.9f;
+    [SerializeField] private float _dropSloshKick = 1.6f;
     [SerializeField] private float _dropBounce = 0.12f;
     [SerializeField] private float _dropBounceDuration = 0.14f;
 
@@ -142,7 +145,9 @@ public class GameSettings : ScriptableObject
     public float AnticipationDuration => _anticipationDuration;
     public float TapPunch => _tapPunch;
     public float TapPunchSettleDuration => _tapPunchSettleDuration;
+    public float DropFallDuration => _dropFallDuration;
     public float DropLandSquash => _dropLandSquash;
+    public float DropSloshKick => _dropSloshKick;
     public float DropBounce => _dropBounce;
     public float DropBounceDuration => _dropBounceDuration;
     public float PourWindUpDuration => _pourWindUpDuration;

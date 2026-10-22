@@ -263,6 +263,15 @@ public sealed class TubeLiquid : MonoBehaviour
         _impactTarget = Mathf.Max(_impactTarget, strength);
     }
 
+    // A knock from outside, like the tube hitting the table: the surface rocks to one side and wobbles front to back,
+    // then the springs let it settle.
+    public void Jolt(float strength)
+    {
+        var side = Random.value < 0.5f ? -1f : 1f;
+        _sloshXVel += side * strength;
+        _sloshZVel -= strength * 2.5f;
+    }
+
     // ---- per frame ------------------------------------------------------------------------------------------
 
     private void LateUpdate()

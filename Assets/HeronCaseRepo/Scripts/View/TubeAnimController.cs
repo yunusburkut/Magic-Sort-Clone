@@ -176,7 +176,7 @@ public sealed class TubeAnimController
         {
             // falls back down with some weight, a little stretched by the speed, hits with a squash and pops up
             // once while the body springs back into shape
-            var fall = lift * 1.3f;
+            var fall = _settings.DropFallDuration;
             var hop = _settings.DropBounceDuration * 0.5f;
             _selectTween = _scope.Add(DOTween.Sequence()
                 .Append(_transform.DOLocalMoveY(y, fall).SetEase(Ease.InQuad))
